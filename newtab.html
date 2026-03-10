@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="newtab.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Bookmarks</h2>
+      </div>
+      <div class="folder-list" id="folder-list">
+        <!-- Folders will be injected here -->
+      </div>
+    </aside>
+    
+    <main class="main-content">
+      <header class="main-header">
+        <h1 id="current-folder-title">Folder Name</h1>
+        <button id="set-default-btn" class="icon-btn" title="Set this folder as default">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+        </button>
+      </header>
+      
+      <div class="bookmark-grid" id="bookmark-grid">
+        <!-- Bookmarks will be injected here -->
+      </div>
+    </main>
+  </div>
+  
+  <div id="toast" class="toast hidden">Default folder updated!</div>
+  
+  <script src="newtab.js"></script>
+</body>
+</html>
