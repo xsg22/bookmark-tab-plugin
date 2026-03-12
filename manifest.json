@@ -1,17 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Bookmark Tab",
+  "name": "TabShelf - New Tab Bookmark Manager",
   "version": "1.0",
-  "description": "Overrides the new tab page to display your bookmarks organized by folder, for quick access.",
+  "description": "Turn Chrome's new tab into a keyboard-friendly bookmark and recent-history workspace for quick access.",
   "permissions": [
     "bookmarks",
     "storage",
-    "favicon"
+    "favicon",
+    "history"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
   "action": {
-    "default_title": "Bookmark Tab Settings"
+    "default_title": "TabShelf - New Tab Bookmark Manager"
   }
 }

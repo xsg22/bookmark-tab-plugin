@@ -1,41 +1,329 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Tab</title>
+  <title>TabShelf - New Tab Bookmark Manager</title>
   <link rel="stylesheet" href="newtab.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2>Bookmarks</h2>
-      </div>
-      <div class="folder-list" id="folder-list">
-        <!-- Folders will be injected here -->
-      </div>
-    </aside>
-    
-    <main class="main-content">
-      <header class="main-header">
-        <h1 id="current-folder-title">Folder Name</h1>
-        <button id="set-default-btn" class="icon-btn" title="Set this folder as default">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-title">
+        <button
+          id="toggle-sidebar-btn"
+          class="icon-btn"
+          type="button"
+          title="展开或折叠分组栏"
+          aria-label="展开或折叠分组栏"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="12" x2="15" y2="12"></line>
+            <line x1="4" y1="18" x2="18" y2="18"></line>
           </svg>
         </button>
-      </header>
-      
-      <div class="bookmark-grid" id="bookmark-grid">
-        <!-- Bookmarks will be injected here -->
+        <div>
+          <p class="eyebrow">TabShelf</p>
+        </div>
       </div>
-    </main>
+
+      <div class="search-shell" id="search-shell">
+        <div class="search-input-wrap">
+          <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            id="global-search-input"
+            class="global-search-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="搜索书签、最近浏览，或直接问 Google Agent"
+            aria-label="全局快捷搜索"
+          >
+          <button
+            id="clear-search-btn"
+            class="clear-search-btn hidden"
+            type="button"
+            aria-label="清空搜索"
+            title="清空搜索"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div id="search-results-panel" class="search-results-panel hidden" role="listbox" aria-label="搜索建议"></div>
+      </div>
+
+      <div class="topbar-actions">
+        <button
+          id="settings-btn"
+          class="icon-btn"
+          type="button"
+          title="打开配置"
+          aria-label="打开配置"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-section">
+          <div id="quick-folder-list" class="folder-list folder-list-quick"></div>
+        </div>
+
+        <div class="sidebar-section sidebar-section-fill">
+          <div class="sidebar-section-header">
+            <span>全部分组</span>
+            <span class="sidebar-hint">可拖拽排序</span>
+          </div>
+          <div id="folder-list" class="folder-list"></div>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <section class="content-panel">
+          <header class="content-header">
+            <div class="content-heading">
+              <div class="content-heading-row">
+                <h2 id="current-folder-title">书签</h2>
+                <span id="default-folder-badge" class="state-pill hidden">默认分组</span>
+              </div>
+              <p id="content-subtitle" class="content-subtitle">用于高频直达的工作入口。</p>
+            </div>
+
+            <div class="content-actions">
+              <button
+                id="rename-folder-btn"
+                class="icon-btn action-btn"
+                type="button"
+                title="重命名当前分组"
+                aria-label="重命名当前分组"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                </svg>
+              </button>
+              <button
+                id="set-default-btn"
+                class="icon-btn action-btn action-btn-primary"
+                type="button"
+                title="设为默认分组"
+                aria-label="设为默认分组"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="content-tabs">
+            <button id="tab-bookmarks-btn" class="tab-btn is-active" type="button">书签</button>
+            <button id="tab-recent-btn" class="tab-btn" type="button">最近浏览</button>
+          </div>
+
+          <section id="bookmarks-view" class="view-panel">
+            <div class="view-toolbar">
+              <div class="view-toolbar-left"></div>
+              <div class="view-toolbar-right">
+                <span id="density-mode-indicator" class="toolbar-hint">舒适模式</span>
+              </div>
+            </div>
+            <div id="bookmark-grid" class="bookmark-grid"></div>
+          </section>
+
+          <section id="recent-view" class="view-panel hidden">
+            <div class="view-toolbar">
+              <div class="view-toolbar-left">
+                <button id="recent-sort-recent-btn" class="segment-btn is-active" type="button">按最近访问</button>
+                <button id="recent-sort-frequency-btn" class="segment-btn" type="button">按访问频次</button>
+              </div>
+              <div class="view-toolbar-right">
+                <span class="toolbar-hint">默认显示 20 条，可继续展开</span>
+              </div>
+            </div>
+            <div id="recent-list" class="recent-list"></div>
+            <button id="recent-load-more-btn" class="load-more-btn hidden" type="button">查看更多</button>
+          </section>
+        </section>
+
+        <aside id="google-panel" class="google-panel">
+          <div class="google-card">
+            <div class="google-card-header">
+              <p class="eyebrow">Google Agent</p>
+              <h3>网页搜索与问答入口</h3>
+            </div>
+
+            <form id="google-agent-form" class="google-agent-form">
+              <input
+                id="google-agent-input"
+                class="google-agent-input"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="输入问题，按 Enter 搜索"
+                aria-label="Google Agent 搜索"
+              >
+              <div class="google-agent-actions">
+                <button id="google-agent-submit-btn" class="primary-btn" type="submit">当前页搜索</button>
+                <button id="google-agent-new-tab-btn" class="secondary-btn" type="button">新标签搜索</button>
+              </div>
+            </form>
+
+            <section class="google-section">
+              <div class="google-section-header">
+                <span>最近搜索</span>
+              </div>
+              <div id="google-recent-searches" class="chip-list"></div>
+            </section>
+
+            <section class="google-section">
+              <div class="google-section-header">
+                <span>示例提示语</span>
+              </div>
+              <div id="google-prompt-list" class="prompt-list"></div>
+            </section>
+          </div>
+        </aside>
+      </main>
+    </div>
   </div>
-  
-  <div id="toast" class="toast hidden">Default folder updated!</div>
-  
+
+  <div id="settings-modal" class="settings-modal hidden" inert>
+    <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="settings-header">
+        <div>
+          <p class="eyebrow">TabShelf Settings</p>
+          <h3 id="settings-title">TabShelf 设置</h3>
+        </div>
+        <button
+          id="close-settings-btn"
+          class="icon-btn"
+          type="button"
+          title="关闭配置"
+          aria-label="关闭配置"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-list">
+        <label class="setting-item">
+          <div class="setting-copy">
+            <strong>启动时默认折叠左侧分组栏</strong>
+            <span>保留更聚焦的首屏布局，随时可在左上角展开。</span>
+          </div>
+          <input id="setting-default-collapse" type="checkbox">
+        </label>
+
+        <label class="setting-item">
+          <div class="setting-copy">
+            <strong>显示右侧 Google Agent 面板</strong>
+            <span>关闭后页面会变成更纯粹的本地工作台。</span>
+          </div>
+          <input id="setting-show-google" type="checkbox">
+        </label>
+
+        <label class="setting-item">
+          <div class="setting-copy">
+            <strong>显示最近浏览 Tab</strong>
+            <span>关闭后仍会用于快捷搜索，但主界面不再单独展示。</span>
+          </div>
+          <input id="setting-show-recent-tab" type="checkbox">
+        </label>
+
+        <div class="setting-item setting-item-column">
+          <div class="setting-copy">
+            <strong>书签密度</strong>
+            <span>舒适模式更从容，紧凑模式更适合大屏和高信息密度。</span>
+          </div>
+          <div class="radio-group">
+            <label class="radio-chip">
+              <input id="setting-density-comfortable" type="radio" name="density-mode" value="comfortable">
+              <span>舒适</span>
+            </label>
+            <label class="radio-chip">
+              <input id="setting-density-compact" type="radio" name="density-mode" value="compact">
+              <span>紧凑</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bookmark-edit-modal" class="settings-modal hidden" inert>
+    <div class="bookmark-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="bookmark-edit-title">
+      <div class="bookmark-edit-header">
+        <div>
+          <p class="eyebrow">Bookmark Editor</p>
+          <h3 id="bookmark-edit-title">修改书签</h3>
+        </div>
+        <button
+          id="close-bookmark-edit-btn"
+          class="icon-btn"
+          type="button"
+          title="关闭书签编辑"
+          aria-label="关闭书签编辑"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="bookmark-edit-form" class="bookmark-edit-form">
+        <div class="bookmark-edit-grid">
+          <label class="bookmark-edit-field">
+            <span>名称</span>
+            <input id="bookmark-edit-name" class="bookmark-edit-input" type="text" autocomplete="off" required>
+          </label>
+
+          <label class="bookmark-edit-field">
+            <span>网址</span>
+            <input id="bookmark-edit-url" class="bookmark-edit-input" type="text" autocomplete="off" required>
+          </label>
+
+          <label class="bookmark-edit-field">
+            <span>所在分组</span>
+            <select id="bookmark-edit-folder" class="bookmark-edit-select"></select>
+          </label>
+
+          <label class="bookmark-edit-field">
+            <span>备注</span>
+            <textarea id="bookmark-edit-note" class="bookmark-edit-textarea" placeholder="可选，写一点便于识别的备注"></textarea>
+          </label>
+        </div>
+
+        <div class="bookmark-edit-actions">
+          <button id="bookmark-edit-cancel-btn" class="bookmark-edit-cancel-btn" type="button">取消</button>
+          <button class="bookmark-edit-save-btn" type="submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
   <script src="newtab.js"></script>
 </body>
 </html>
