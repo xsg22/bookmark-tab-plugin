@@ -12,7 +12,23 @@
   };
 
   // 命令面板的结果区固定最多展示 7 条，避免高分辨率下弹框过高。
+  // 最大可见结果数，命令面板最多展示7条结果，避免弹框过高
   const MAX_VISIBLE_RESULT_COUNT = 7;
+
+  // 命令菜单的最小宽度（像素）
+  const COMMAND_MENU_MIN_WIDTH = 148;
+  // 命令菜单的最大宽度（像素）
+  const COMMAND_MENU_MAX_WIDTH = 160;
+
+  // 命令菜单的最大高度（像素），对应约7条结果
+  const COMMAND_MENU_MAX_HEIGHT = 312;
+  // 命令菜单的最小高度（像素）
+  const COMMAND_MENU_MIN_HEIGHT = 100;
+
+  // 命令菜单与窗口边缘的间距（像素）
+  const COMMAND_MENU_EDGE_GAP = 8;
+  // 命令菜单相对于触发按钮的间距（像素）
+  const COMMAND_MENU_TRIGGER_GAP = 4;
 
   class PaletteOverlay {
     constructor() {
@@ -107,7 +123,7 @@
             max-height: 70vh;
             margin: min(10vh, 72px) auto 0;
             border-radius: var(--ts-panel-radius);
-            overflow: hidden;
+            overflow: visible;
             display: flex;
             flex-direction: column;
             background: var(--ts-panel-bg);
@@ -145,39 +161,50 @@
           }
 
           #tabshelf-palette-root .ts-command-trigger {
-            width: 36px;
-            height: 34px;
-            border-radius: 12px;
+            width: 38px;
+            height: 36px;
+            border-radius: 11px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0;
-            background: var(--ts-muted-bg);
-            color: #475569;
+            background: rgba(255, 255, 255, 0.94);
+            color: #334155;
             user-select: none;
-            border: 1px solid rgba(203, 213, 225, 0.72);
+            border: 1px solid rgba(203, 213, 225, 0.88);
             cursor: pointer;
             padding: 0;
             position: relative;
-            transition: 140ms ease;
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.74),
+              0 3px 10px rgba(15, 23, 42, 0.06);
+            transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
           }
 
           #tabshelf-palette-root .ts-command-trigger:hover {
-            border-color: rgba(148, 163, 184, 0.42);
-            background: rgba(255, 255, 255, 0.92);
-            color: #334155;
+            border-color: rgba(148, 163, 184, 0.52);
+            background: rgba(255, 255, 255, 0.99);
+            color: #0f172a;
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.8),
+              0 5px 14px rgba(15, 23, 42, 0.08);
           }
 
           #tabshelf-palette-root .ts-command-trigger.ts-open {
             border-color: rgba(59, 130, 246, 0.45);
-            background: rgba(59, 130, 246, 0.12);
+            background: rgba(239, 246, 255, 0.96);
             color: #1e40af;
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.8),
+              0 6px 16px rgba(59, 130, 246, 0.14);
           }
 
           #tabshelf-palette-root .ts-command-trigger:focus-visible {
             outline: none;
             border-color: rgba(59, 130, 246, 0.5);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
+            box-shadow:
+              0 0 0 2px rgba(59, 130, 246, 0.16),
+              0 5px 14px rgba(15, 23, 42, 0.08);
           }
 
           #tabshelf-palette-root .ts-command-icon {
@@ -227,19 +254,27 @@
 
           #tabshelf-palette-root .ts-command-menu {
             position: absolute;
-            top: calc(100% + 8px);
+            top: calc(100% + 4px);
             left: 0;
-            width: min(320px, calc(100% - 24px));
-            max-height: 312px;
-            overflow: auto;
+            width: 176px;
+            max-height: 224px;
+            overflow-y: auto;
+            overflow-x: hidden;
             display: none;
-            padding: 7px;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid var(--ts-line);
-            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+            padding: 6px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(203, 213, 225, 0.82);
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.78),
+              0 16px 32px rgba(15, 23, 42, 0.14);
             backdrop-filter: blur(18px);
             z-index: 18;
+          }
+
+          #tabshelf-palette-root .ts-wrap.ts-command-menu-up .ts-command-menu {
+            top: auto;
+            bottom: calc(100% + 4px);
           }
 
           #tabshelf-palette-root .ts-command-menu.ts-visible {
@@ -258,9 +293,9 @@
           #tabshelf-palette-root .ts-command-item {
             width: 100%;
             position: relative;
-            border: 1px solid transparent;
-            border-radius: 12px;
-            background: transparent;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.86);
             color: inherit;
             display: grid;
             grid-template-columns: 30px minmax(0, 1fr);
@@ -268,21 +303,24 @@
             align-items: center;
             text-align: left;
             cursor: pointer;
-            padding: 10px 11px;
-            transition: 120ms ease;
+            padding: 9px 10px;
+            transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
           }
 
           #tabshelf-palette-root .ts-command-item:hover {
-            background: var(--ts-hover-bg);
+            border-color: rgba(148, 163, 184, 0.32);
+            background: rgba(248, 250, 252, 0.96);
           }
 
           #tabshelf-palette-root .ts-command-item.ts-focused {
-            background: rgba(148, 163, 184, 0.14);
+            border-color: rgba(148, 163, 184, 0.42);
+            background: rgba(241, 245, 249, 0.94);
           }
 
           #tabshelf-palette-root .ts-command-item.ts-active {
-            background: var(--ts-active-bg);
-            border-color: rgba(37, 99, 235, 0.18);
+            background: rgba(239, 246, 255, 0.92);
+            border-color: rgba(59, 130, 246, 0.36);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
           }
 
           #tabshelf-palette-root .ts-command-item::before {
@@ -309,7 +347,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(241, 245, 249, 0.94);
+            background: rgba(241, 245, 249, 0.98);
             color: #334155;
           }
 
@@ -595,18 +633,21 @@
             }
 
             #tabshelf-palette-root .ts-command-trigger {
-              border-color: rgba(148, 163, 184, 0.24);
-              background: rgba(15, 23, 42, 0.56);
+              border-color: rgba(148, 163, 184, 0.3);
+              background: rgba(15, 23, 42, 0.62);
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                0 4px 10px rgba(2, 6, 23, 0.24);
             }
 
             #tabshelf-palette-root .ts-command-trigger:hover {
-              border-color: rgba(148, 163, 184, 0.36);
-              background: rgba(30, 41, 59, 0.84);
+              border-color: rgba(148, 163, 184, 0.46);
+              background: rgba(30, 41, 59, 0.9);
             }
 
             #tabshelf-palette-root .ts-command-trigger.ts-open {
-              border-color: rgba(96, 165, 250, 0.36);
-              background: rgba(59, 130, 246, 0.22);
+              border-color: rgba(96, 165, 250, 0.48);
+              background: rgba(59, 130, 246, 0.28);
               color: #bfdbfe;
             }
 
@@ -621,25 +662,29 @@
 
             #tabshelf-palette-root .ts-command-menu {
               background: rgba(15, 23, 42, 0.92);
-              border-color: rgba(148, 163, 184, 0.18);
-              box-shadow: 0 18px 40px rgba(2, 6, 23, 0.38);
+              border-color: rgba(148, 163, 184, 0.22);
+              box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                0 18px 40px rgba(2, 6, 23, 0.38);
             }
 
             #tabshelf-palette-root .ts-command-item:hover {
-              background: var(--ts-hover-bg);
+              border-color: rgba(148, 163, 184, 0.42);
+              background: rgba(30, 41, 59, 0.86);
             }
 
             #tabshelf-palette-root .ts-command-item.ts-focused {
-              background: rgba(148, 163, 184, 0.2);
+              border-color: rgba(148, 163, 184, 0.5);
+              background: rgba(51, 65, 85, 0.84);
             }
 
             #tabshelf-palette-root .ts-command-item.ts-active {
-              background: var(--ts-active-bg);
-              border-color: rgba(96, 165, 250, 0.34);
+              background: rgba(30, 58, 138, 0.34);
+              border-color: rgba(96, 165, 250, 0.52);
             }
 
             #tabshelf-palette-root .ts-command-item-icon {
-              background: rgba(30, 41, 59, 0.9);
+              background: rgba(15, 23, 42, 0.92);
             }
 
             #tabshelf-palette-root .ts-command-item-title {
@@ -1287,8 +1332,8 @@
       this.commandTriggerEl.setAttribute('aria-label', `切换搜索类型，当前：${commandDisplayMeta.triggerLabel}`);
 
       if (this.isCommandMenuOpen) {
-        this.syncCommandMenuPosition();
         this.renderCommandMenu();
+        this.syncCommandMenuPosition();
       }
     }
 
@@ -1339,19 +1384,93 @@
     syncCommandMenuPosition() {
       if (!this.commandMenuEl || !this.commandTriggerEl || !this.panelEl) return;
 
-      // 下拉与左侧模式按钮对齐，强化“入口与菜单”的关联感。
-      var headEl = this.panelEl.querySelector('.ts-head');
-      if (!headEl) return;
+      const layout = this.computeCommandMenuPlacement();
+      if (!layout) return;
+      this.applyCommandMenuLayout(layout);
+    }
 
+    measureCommandMenuWidth() {
+      if (!this.commandMenuEl) return COMMAND_MENU_MIN_WIDTH;
+
+      const titleEls = this.commandMenuEl.querySelectorAll('.ts-command-item-title');
+      const titleMaxWidth = Array.from(titleEls).reduce((maxWidth, titleEl) => {
+        return Math.max(maxWidth, Math.ceil(titleEl.scrollWidth));
+      }, 0);
+
+      if (!titleMaxWidth) return COMMAND_MENU_MIN_WIDTH;
+
+      const firstItem = this.commandMenuEl.querySelector('.ts-command-item');
+      if (!firstItem) return COMMAND_MENU_MIN_WIDTH;
+
+      const itemStyle = window.getComputedStyle(firstItem);
+      const menuStyle = window.getComputedStyle(this.commandMenuEl);
+      const gap = parseFloat(itemStyle.columnGap || itemStyle.gap) || 10;
+      const itemPaddingLeft = parseFloat(itemStyle.paddingLeft) || 0;
+      const itemPaddingRight = parseFloat(itemStyle.paddingRight) || 0;
+      const menuPaddingLeft = parseFloat(menuStyle.paddingLeft) || 0;
+      const menuPaddingRight = parseFloat(menuStyle.paddingRight) || 0;
+      const iconColumnWidth = 30;
+      const scrollbarAllowance = 8;
+
+      const measuredWidth = Math.ceil(
+        iconColumnWidth +
+        gap +
+        titleMaxWidth +
+        itemPaddingLeft +
+        itemPaddingRight +
+        menuPaddingLeft +
+        menuPaddingRight +
+        scrollbarAllowance
+      );
+      return Math.min(COMMAND_MENU_MAX_WIDTH, Math.max(COMMAND_MENU_MIN_WIDTH, measuredWidth));
+    }
+
+    computeCommandMenuPlacement() {
+      if (!this.commandMenuEl || !this.commandTriggerEl || !this.panelEl) return null;
+
+      var headEl = this.panelEl.querySelector('.ts-head');
+      if (!headEl) return null;
+
+      const panelRect = this.panelEl.getBoundingClientRect();
       const headRect = headEl.getBoundingClientRect();
       const triggerRect = this.commandTriggerEl.getBoundingClientRect();
-      const left = Math.max(8, Math.round(triggerRect.left - headRect.left));
-      const availableWidth = Math.max(240, Math.round(headRect.width - left - 8));
-      const preferredWidth = Math.max(292, Math.round(triggerRect.width + 140));
-      const targetWidth = Math.min(preferredWidth, availableWidth);
+      const measuredWidth = this.measureCommandMenuWidth();
+      const availableHeadWidth = Math.max(96, Math.round(headRect.width - COMMAND_MENU_EDGE_GAP * 2));
+      const width = Math.min(
+        availableHeadWidth,
+        Math.max(COMMAND_MENU_MIN_WIDTH, measuredWidth)
+      );
 
-      this.commandMenuEl.style.left = `${left}px`;
-      this.commandMenuEl.style.width = `${targetWidth}px`;
+      const leftByTrigger = Math.round(triggerRect.left - headRect.left);
+      const maxLeft = Math.round(headRect.width - width - COMMAND_MENU_EDGE_GAP);
+      const clampedMaxLeft = Math.max(COMMAND_MENU_EDGE_GAP, maxLeft);
+      const left = Math.max(COMMAND_MENU_EDGE_GAP, Math.min(leftByTrigger, clampedMaxLeft));
+
+      const availableBelow = Math.floor(
+        panelRect.bottom - triggerRect.bottom - COMMAND_MENU_TRIGGER_GAP - COMMAND_MENU_EDGE_GAP
+      );
+      const availableAbove = Math.floor(
+        triggerRect.top - panelRect.top - COMMAND_MENU_TRIGGER_GAP - COMMAND_MENU_EDGE_GAP
+      );
+
+      let placeUp = availableBelow < COMMAND_MENU_MIN_HEIGHT && availableAbove > availableBelow;
+      let availableHeight = placeUp ? availableAbove : availableBelow;
+      if (availableHeight < COMMAND_MENU_MIN_HEIGHT) {
+        placeUp = availableAbove > availableBelow;
+        availableHeight = Math.max(availableAbove, availableBelow);
+      }
+
+      const maxHeight = Math.max(88, Math.min(COMMAND_MENU_MAX_HEIGHT, availableHeight));
+      return { left, width, maxHeight, placeUp };
+    }
+
+    applyCommandMenuLayout(layout) {
+      if (!this.commandMenuEl || !this.panelEl || !layout) return;
+
+      this.commandMenuEl.style.left = `${layout.left}px`;
+      this.commandMenuEl.style.width = `${layout.width}px`;
+      this.commandMenuEl.style.maxHeight = `${layout.maxHeight}px`;
+      this.panelEl.classList.toggle('ts-command-menu-up', !!layout.placeUp);
     }
 
     setCommandMenuFocus(nextIndex, options = {}) {
@@ -1400,9 +1519,9 @@
 
       this.isCommandMenuOpen = true;
       this.commandMenuFocusIndex = this.getCommandMenuIndex(this.getCurrentCommandId(this.inputEl?.value || ''));
-      this.syncCommandMenuPosition();
       this.renderCommandMenu();
       this.commandMenuEl.classList.add('ts-visible');
+      this.syncCommandMenuPosition();
       this.commandTriggerEl.classList.add('ts-open');
       this.commandTriggerEl.setAttribute('aria-expanded', 'true');
       this.focusInput();
@@ -1417,6 +1536,9 @@
       this.commandMenuEl.classList.remove('ts-visible');
       this.commandTriggerEl.classList.remove('ts-open');
       this.commandTriggerEl.setAttribute('aria-expanded', 'false');
+      if (this.panelEl) {
+        this.panelEl.classList.remove('ts-command-menu-up');
+      }
     }
 
     renderCommandMenu() {
