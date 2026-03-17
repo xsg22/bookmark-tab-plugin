@@ -7,8 +7,24 @@
     "bookmarks",
     "storage",
     "favicon",
-    "history"
+    "history",
+    "tabs",
+    "scripting",
+    "activeTab"
   ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "commands": {
+    "toggle-palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "打开 TabShelf 命令面板"
+    }
+  },
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

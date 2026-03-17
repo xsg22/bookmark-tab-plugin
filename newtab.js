@@ -10,10 +10,8 @@ const defaultSettings = {
   defaultSidebarCollapsed: true,
   showGooglePanel: false,
   showRecentTab: true,
-  densityMode: 'comfortable',
   recentFolderIds: [],
   folderOrder: [],
-  pinnedBookmarkIdsByFolder: {},
   bookmarkNotes: {},
   googleRecentSearches: [],
   recentSort: 'recent'
@@ -40,6 +38,8 @@ const state = {
   searchResults: [],
   activeSearchIndex: -1,
   dragFolderId: null,
+  highlightedBookmarkId: null,
+  pendingRevealBookmarkId: null,
   pendingDeleteBookmarkId: null,
   keyboardScope: 'tabs',
   keyboardTabIndex: 0,
@@ -74,7 +74,6 @@ const tabBookmarksBtn = document.getElementById('tab-bookmarks-btn');
 const tabRecentBtn = document.getElementById('tab-recent-btn');
 const bookmarksViewEl = document.getElementById('bookmarks-view');
 const recentViewEl = document.getElementById('recent-view');
-const densityModeIndicatorEl = document.getElementById('density-mode-indicator');
 const bookmarkGridEl = document.getElementById('bookmark-grid');
 const recentListEl = document.getElementById('recent-list');
 const recentSortRecentBtn = document.getElementById('recent-sort-recent-btn');
@@ -95,8 +94,6 @@ const closeSettingsBtn = document.getElementById('close-settings-btn');
 const settingDefaultCollapseEl = document.getElementById('setting-default-collapse');
 const settingShowGoogleEl = document.getElementById('setting-show-google');
 const settingShowRecentTabEl = document.getElementById('setting-show-recent-tab');
-const settingDensityComfortableEl = document.getElementById('setting-density-comfortable');
-const settingDensityCompactEl = document.getElementById('setting-density-compact');
 
 // 书签编辑弹窗 DOM。
 const bookmarkEditModalEl = document.getElementById('bookmark-edit-modal');
@@ -109,6 +106,7 @@ const bookmarkEditNoteEl = document.getElementById('bookmark-edit-note');
 const bookmarkEditCancelBtnEl = document.getElementById('bookmark-edit-cancel-btn');
 
 let lastModalTriggerEl = null;
+let copiedBookmarkHighlightTimer = null;
 
 // 常用 SVG 图标用模板字符串复用，避免重复拼装。
 const folderSvg = `
@@ -128,18 +126,10 @@ const dragSvg = `
   </svg>
 `;
 
-const pinSvg = `
+const copySvg = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M12 17v4"></path>
-    <path d="M8 3h8l-1 5 3 3v2H6v-2l3-3-1-5z"></path>
-  </svg>
-`;
-
-const newTabSvg = `
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-    <polyline points="15 3 21 3 21 9"></polyline>
-    <line x1="10" y1="14" x2="21" y2="3"></line>
+    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
   </svg>
 `;
 
@@ -215,6 +205,10 @@ function loadSettings() {
 
       // 星标分组功能已移除，读取旧配置时顺手清掉历史字段。
       delete state.settings.starredFolderIds;
+      // 书签置顶功能已移除，旧配置里的字段一并清理，避免残留脏数据。
+      delete state.settings.pinnedBookmarkIdsByFolder;
+      // 书签密度功能已移除，旧配置字段不再保留。
+      delete state.settings.densityMode;
       resolve();
     });
   });
@@ -258,7 +252,20 @@ function walkBookmarkTree(node, path) {
   if (!node.children) return;
 
   const nextPath = node.title ? [...path, node.title] : [...path];
-  const directBookmarks = node.children.filter((child) => child.url);
+  // 保留原始 sibling index，复制书签时才能稳定插到当前书签后面。
+  const directBookmarks = node.children.reduce((bookmarks, child, childIndex) => {
+    if (!child.url) return bookmarks;
+
+    bookmarks.push({
+      id: child.id,
+      title: child.title || '未命名书签',
+      url: child.url,
+      parentId: node.id,
+      index: typeof child.index === 'number' ? child.index : childIndex
+    });
+
+    return bookmarks;
+  }, []);
 
   if (node.title) {
     state.allEditableFolders.push({
@@ -273,12 +280,7 @@ function walkBookmarkTree(node, path) {
       id: node.id,
       title: node.title,
       path: nextPath,
-      children: directBookmarks.map((bookmark) => ({
-        id: bookmark.id,
-        title: bookmark.title || '未命名书签',
-        url: bookmark.url,
-        parentId: node.id
-      }))
+      children: directBookmarks
     };
 
     state.allFolders.push(folder);
@@ -299,12 +301,6 @@ function cleanupInvalidSettingReferences() {
   const validFolderIds = new Set(state.allFolders.map((folder) => folder.id));
 
   state.settings.recentFolderIds = state.settings.recentFolderIds.filter((id) => validFolderIds.has(id));
-
-  Object.keys(state.settings.pinnedBookmarkIdsByFolder).forEach((folderId) => {
-    if (!validFolderIds.has(folderId)) {
-      delete state.settings.pinnedBookmarkIdsByFolder[folderId];
-    }
-  });
 }
 
 function ensureCurrentFolder() {
@@ -430,22 +426,6 @@ function setupEventListeners() {
     showToast('已更新最近浏览 Tab 设置');
   });
 
-  settingDensityComfortableEl.addEventListener('change', async () => {
-    if (!settingDensityComfortableEl.checked) return;
-    state.settings.densityMode = 'comfortable';
-    applyDensityMode();
-    await persistSettings();
-    showToast('已切换为舒适模式');
-  });
-
-  settingDensityCompactEl.addEventListener('change', async () => {
-    if (!settingDensityCompactEl.checked) return;
-    state.settings.densityMode = 'compact';
-    applyDensityMode();
-    await persistSettings();
-    showToast('已切换为紧凑模式');
-  });
-
   tabBookmarksBtn.addEventListener('click', () => switchView('bookmarks'));
   tabRecentBtn.addEventListener('click', () => switchView('recent'));
 
@@ -542,7 +522,6 @@ function setupEventListeners() {
 
 function applySettingsToUI() {
   applySidebarState();
-  applyDensityMode();
 
   bodyEl.classList.toggle('hide-google-panel', !state.settings.showGooglePanel);
   googlePanelEl.classList.toggle('hidden', !state.settings.showGooglePanel);
@@ -555,8 +534,6 @@ function applySettingsToUI() {
   settingDefaultCollapseEl.checked = !!state.settings.defaultSidebarCollapsed;
   settingShowGoogleEl.checked = !!state.settings.showGooglePanel;
   settingShowRecentTabEl.checked = !!state.settings.showRecentTab;
-  settingDensityComfortableEl.checked = state.settings.densityMode === 'comfortable';
-  settingDensityCompactEl.checked = state.settings.densityMode === 'compact';
 }
 
 function applySidebarState() {
@@ -565,9 +542,32 @@ function applySidebarState() {
   toggleSidebarBtn.setAttribute('aria-label', toggleSidebarBtn.title);
 }
 
-function applyDensityMode() {
-  bodyEl.classList.toggle('density-compact', state.settings.densityMode === 'compact');
-  densityModeIndicatorEl.textContent = state.settings.densityMode === 'compact' ? '紧凑模式' : '舒适模式';
+function scheduleCopiedBookmarkHighlightClear(bookmarkId) {
+  clearTimeout(copiedBookmarkHighlightTimer);
+  copiedBookmarkHighlightTimer = setTimeout(() => {
+    if (state.highlightedBookmarkId !== bookmarkId) return;
+
+    state.highlightedBookmarkId = null;
+    if (state.currentView === 'bookmarks') {
+      renderBookmarksView();
+    }
+  }, 2600);
+}
+
+function revealCopiedBookmarkCard() {
+  if (!state.pendingRevealBookmarkId) return;
+
+  const bookmarkId = state.pendingRevealBookmarkId;
+  requestAnimationFrame(() => {
+    const targetCard = bookmarkGridEl.querySelector(`[data-bookmark-id="${bookmarkId}"]`);
+    if (targetCard) {
+      targetCard.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    if (state.pendingRevealBookmarkId === bookmarkId) {
+      state.pendingRevealBookmarkId = null;
+    }
+  });
 }
 
 function openSettingsModal() {
@@ -1143,28 +1143,27 @@ function renderBookmarksView() {
     return;
   }
 
-  const pinnedIds = new Set(getPinnedBookmarkIds(folder.id));
   const notes = state.settings.bookmarkNotes || {};
-  const bookmarks = [...folder.children].sort((a, b) => {
-    const aPinned = pinnedIds.has(a.id) ? 1 : 0;
-    const bPinned = pinnedIds.has(b.id) ? 1 : 0;
-    if (aPinned !== bPinned) return bPinned - aPinned;
-    return a.title.localeCompare(b.title, 'zh-CN');
-  });
+  // 按书签原始顺序渲染，保证复制结果紧跟在原书签后面。
+  const bookmarks = [...folder.children];
 
   bookmarks.forEach((bookmark) => {
     const note = notes[bookmark.id] || '';
-    const isPinned = pinnedIds.has(bookmark.id);
     const isDeleteConfirmOpen = state.pendingDeleteBookmarkId === bookmark.id;
+    const isHighlightedBookmark = state.highlightedBookmarkId === bookmark.id;
     const card = document.createElement('article');
-    card.className = `bookmark-card ${isPinned ? 'is-pinned' : ''} ${isDeleteConfirmOpen ? 'has-delete-confirm' : ''}`;
+    card.className = [
+      'bookmark-card',
+      isHighlightedBookmark ? 'is-copy-highlight' : '',
+      isDeleteConfirmOpen ? 'has-delete-confirm' : ''
+    ].filter(Boolean).join(' ');
     card.dataset.bookmarkId = bookmark.id;
     card.dataset.url = bookmark.url;
 
     card.innerHTML = `
       <div class="bookmark-card-top">
         <a
-          class="bookmark-card-body"
+          class="bookmark-card-body bookmark-card-main"
           href="${escapeHTML(bookmark.url)}"
           data-open-bookmark="true"
           data-url="${escapeHTML(bookmark.url)}"
@@ -1173,21 +1172,15 @@ function renderBookmarksView() {
           <div class="bookmark-icon">
             <img src="${getFaviconUrl(bookmark.url)}" alt="" loading="lazy">
           </div>
+          <div class="bookmark-summary">
+            <div class="bookmark-title">${escapeHTML(bookmark.title)}</div>
+            <div class="bookmark-domain">${escapeHTML(getHostname(bookmark.url))}</div>
+            ${note ? `<div class="bookmark-note">${escapeHTML(note)}</div>` : ''}
+          </div>
         </a>
         <div class="bookmark-actions-wrap">
           <div class="bookmark-actions">
-            <button
-              class="bookmark-action bookmark-action--pin ${isPinned ? 'is-active' : ''}"
-              type="button"
-              data-bookmark-action="pin"
-              data-bookmark-id="${bookmark.id}"
-              title="${isPinned ? '取消置顶' : '置顶'}"
-              aria-pressed="${isPinned ? 'true' : 'false'}"
-            >
-              <span class="bookmark-action__icon">${pinSvg}</span>
-              <span class="bookmark-action__label">${isPinned ? '已置顶' : '置顶'}</span>
-            </button>
-            <button class="bookmark-action" type="button" data-bookmark-action="new-tab" data-bookmark-id="${bookmark.id}" title="在新标签页打开">${newTabSvg}</button>
+            <button class="bookmark-action" type="button" data-bookmark-action="copy" data-bookmark-id="${bookmark.id}" title="复制">${copySvg}</button>
             <button class="bookmark-action" type="button" data-bookmark-action="edit" data-bookmark-id="${bookmark.id}" title="编辑">${editSvg}</button>
             <button class="bookmark-action ${isDeleteConfirmOpen ? 'is-danger' : ''}" type="button" data-bookmark-action="delete" data-bookmark-id="${bookmark.id}" title="删除" aria-expanded="${isDeleteConfirmOpen ? 'true' : 'false'}">${deleteSvg}</button>
           </div>
@@ -1202,24 +1195,13 @@ function renderBookmarksView() {
           ` : ''}
         </div>
       </div>
-      <a
-        class="bookmark-card-body bookmark-meta"
-        href="${escapeHTML(bookmark.url)}"
-        data-open-bookmark="true"
-        data-url="${escapeHTML(bookmark.url)}"
-        title="${escapeHTML(bookmark.title)}"
-      >
-        ${isPinned ? '<div class="bookmark-meta-badges"><span class="bookmark-pin-badge">已置顶</span></div>' : ''}
-        <div class="bookmark-title">${escapeHTML(bookmark.title)}</div>
-        <div class="bookmark-domain">${escapeHTML(getHostname(bookmark.url))}</div>
-        ${note ? `<div class="bookmark-note">${escapeHTML(note)}</div>` : ''}
-      </a>
     `;
 
     bookmarkGridEl.appendChild(card);
   });
 
   renderKeyboardNavigationState();
+  revealCopiedBookmarkCard();
 }
 
 function renderBookmarkEmptyState() {
@@ -1234,10 +1216,6 @@ function renderBookmarkEmptyState() {
   `;
 
   bookmarkGridEl.appendChild(empty);
-}
-
-function getPinnedBookmarkIds(folderId) {
-  return state.settings.pinnedBookmarkIdsByFolder[folderId] || [];
 }
 
 function closePendingDeleteConfirmation() {
@@ -1489,13 +1467,8 @@ function handleBookmarkGridClick(event) {
     closePendingDeleteConfirmation();
   }
 
-  if (action === 'new-tab') {
-    openUrl(bookmark.url, true);
-    return;
-  }
-
-  if (action === 'pin') {
-    toggleBookmarkPinned(bookmark.parentId, bookmark.id);
+  if (action === 'copy') {
+    void duplicateBookmark(bookmark);
     return;
   }
 
@@ -1518,18 +1491,6 @@ function handleBookmarkGridClick(event) {
   if (action === 'confirm-delete') {
     deleteBookmark(bookmark);
   }
-}
-
-async function toggleBookmarkPinned(folderId, bookmarkId) {
-  const pinnedIds = getPinnedBookmarkIds(folderId);
-  const nextPinnedIds = pinnedIds.includes(bookmarkId)
-    ? pinnedIds.filter((id) => id !== bookmarkId)
-    : [bookmarkId, ...pinnedIds.filter((id) => id !== bookmarkId)];
-
-  state.settings.pinnedBookmarkIdsByFolder[folderId] = nextPinnedIds;
-  renderBookmarksView();
-  await persistSettings();
-  showToast(nextPinnedIds.includes(bookmarkId) ? '已置顶书签' : '已取消置顶');
 }
 
 function promptRenameCurrentFolder(folder) {
@@ -1588,6 +1549,51 @@ function moveBookmarkNode(bookmarkId, parentId) {
   });
 }
 
+function createBookmarkNode(bookmarkData) {
+  return new Promise((resolve, reject) => {
+    chrome.bookmarks.create(bookmarkData, (createdBookmark) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      resolve(createdBookmark);
+    });
+  });
+}
+
+async function duplicateBookmark(bookmark) {
+  const sourceTitle = bookmark.title || '未命名书签';
+  const sourceNote = state.settings.bookmarkNotes[bookmark.id] || '';
+
+  try {
+    // 用原始 sibling index + 1 创建副本，确保它紧跟在当前书签后面。
+    const createdBookmark = await createBookmarkNode({
+      parentId: bookmark.parentId,
+      index: (typeof bookmark.index === 'number' ? bookmark.index : 0) + 1,
+      title: `${sourceTitle} - copy`,
+      url: bookmark.url
+    });
+
+    // 备注是扩展自行维护的数据，复制时一并带过去，方便用户继续修改。
+    if (sourceNote) {
+      state.settings.bookmarkNotes[createdBookmark.id] = sourceNote;
+    }
+
+    // 记录刚复制出的书签，渲染后高亮并滚动到可视区域，方便用户第一眼看到。
+    state.highlightedBookmarkId = createdBookmark.id;
+    state.pendingRevealBookmarkId = createdBookmark.id;
+
+    await persistSettings();
+    await loadBookmarkTree();
+    await selectFolder(bookmark.parentId, false);
+    scheduleCopiedBookmarkHighlightClear(createdBookmark.id);
+    showToast('已复制书签，可以继续编辑内容');
+  } catch (error) {
+    showToast('复制书签失败');
+  }
+}
+
 async function handleBookmarkEditSubmit(event) {
   event.preventDefault();
 
@@ -1644,7 +1650,6 @@ function deleteBookmark(bookmark) {
     }
 
     delete state.settings.bookmarkNotes[bookmark.id];
-    state.settings.pinnedBookmarkIdsByFolder[bookmark.parentId] = getPinnedBookmarkIds(bookmark.parentId).filter((id) => id !== bookmark.id);
 
     await persistSettings();
     await loadBookmarkTree();
@@ -1893,7 +1898,7 @@ function buildBookmarkSearchResults(query) {
         meta: `${folder.title} · ${getHostname(bookmark.url)}`,
         url: bookmark.url,
         fillValue: bookmark.title,
-        score: bestScore + (getPinnedBookmarkIds(folder.id).includes(bookmark.id) ? 18 : 0),
+        score: bestScore,
         icon: 'bookmark'
       });
     });
