@@ -48,8 +48,6 @@
       this.backdropEl = null;
       this.panelEl = null;
       this.commandTriggerEl = null;
-      this.commandIconEl = null;
-      this.commandLabelEl = null;
       this.commandMenuEl = null;
       this.isCommandMenuOpen = false;
       this.commandMenuFocusIndex = -1;
@@ -67,14 +65,7 @@
     mount() {
       if (this.hostEl) return;
 
-      // 统一入口后，右侧命令快捷标签全部移除。
-      // 保留空字符串是为了兼容旧模板中的占位符插值。
-      var commandHintMarkupLegacy = '';
-
-      // 统一入口后，右侧命令快捷标签全部移除；保留空字符串是为了兼容旧模板占位符。
-      var commandHintMarkupCompat = '';
-
-      var commandHintMarkup = '';
+      // The palette header now has a single command entry point on the left.
       this.hostEl = document.createElement('div');
       this.hostEl.id = 'tabshelf-palette-root';
       this.hostEl.innerHTML = `
@@ -142,7 +133,7 @@
 
           #tabshelf-palette-root .ts-search-bar {
             display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1fr) auto;
             gap: 8px;
             align-items: center;
             min-height: var(--ts-input-height);
@@ -158,229 +149,6 @@
             box-shadow:
               inset 0 1px 0 rgba(255, 255, 255, 0.6),
               0 8px 22px rgba(59, 130, 246, 0.08);
-          }
-
-          #tabshelf-palette-root .ts-command-trigger {
-            width: 38px;
-            height: 36px;
-            border-radius: 11px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0;
-            background: rgba(255, 255, 255, 0.94);
-            color: #334155;
-            user-select: none;
-            border: 1px solid rgba(203, 213, 225, 0.88);
-            cursor: pointer;
-            padding: 0;
-            position: relative;
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.74),
-              0 3px 10px rgba(15, 23, 42, 0.06);
-            transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
-          }
-
-          #tabshelf-palette-root .ts-command-trigger:hover {
-            border-color: rgba(148, 163, 184, 0.52);
-            background: rgba(255, 255, 255, 0.99);
-            color: #0f172a;
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.8),
-              0 5px 14px rgba(15, 23, 42, 0.08);
-          }
-
-          #tabshelf-palette-root .ts-command-trigger.ts-open {
-            border-color: rgba(59, 130, 246, 0.45);
-            background: rgba(239, 246, 255, 0.96);
-            color: #1e40af;
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.8),
-              0 6px 16px rgba(59, 130, 246, 0.14);
-          }
-
-          #tabshelf-palette-root .ts-command-trigger:focus-visible {
-            outline: none;
-            border-color: rgba(59, 130, 246, 0.5);
-            box-shadow:
-              0 0 0 2px rgba(59, 130, 246, 0.16),
-              0 5px 14px rgba(15, 23, 42, 0.08);
-          }
-
-          #tabshelf-palette-root .ts-command-icon {
-            width: 18px;
-            height: 18px;
-            border-radius: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            color: #334155;
-          }
-
-          #tabshelf-palette-root .ts-command-icon svg {
-            width: 18px;
-            height: 18px;
-            display: block;
-          }
-
-          #tabshelf-palette-root .ts-command-label {
-            font-size: 12px;
-            font-weight: 700;
-            line-height: 1;
-            letter-spacing: 0.01em;
-            white-space: nowrap;
-            color: currentColor;
-          }
-
-          #tabshelf-palette-root .ts-command-caret {
-            width: 14px;
-            height: 14px;
-            color: #64748b;
-            transition: transform 140ms ease;
-            flex-shrink: 0;
-          }
-
-          #tabshelf-palette-root .ts-command-caret svg {
-            width: 14px;
-            height: 14px;
-            display: block;
-          }
-
-          #tabshelf-palette-root .ts-command-trigger.ts-open .ts-command-caret {
-            transform: rotate(180deg);
-            color: #1d4ed8;
-          }
-
-          #tabshelf-palette-root .ts-command-menu {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            width: 176px;
-            max-height: 224px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: none;
-            padding: 6px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.97);
-            border: 1px solid rgba(203, 213, 225, 0.82);
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.78),
-              0 16px 32px rgba(15, 23, 42, 0.14);
-            backdrop-filter: blur(18px);
-            z-index: 18;
-          }
-
-          #tabshelf-palette-root .ts-wrap.ts-command-menu-up .ts-command-menu {
-            top: auto;
-            bottom: calc(100% + 4px);
-          }
-
-          #tabshelf-palette-root .ts-command-menu.ts-visible {
-            display: block;
-          }
-
-          #tabshelf-palette-root .ts-command-menu::-webkit-scrollbar {
-            width: 7px;
-          }
-
-          #tabshelf-palette-root .ts-command-menu::-webkit-scrollbar-thumb {
-            background: rgba(100, 116, 139, 0.24);
-            border-radius: 999px;
-          }
-
-          #tabshelf-palette-root .ts-command-item {
-            width: 100%;
-            position: relative;
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.86);
-            color: inherit;
-            display: grid;
-            grid-template-columns: 30px minmax(0, 1fr);
-            gap: 10px;
-            align-items: center;
-            text-align: left;
-            cursor: pointer;
-            padding: 9px 10px;
-            transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
-          }
-
-          #tabshelf-palette-root .ts-command-item:hover {
-            border-color: rgba(148, 163, 184, 0.32);
-            background: rgba(248, 250, 252, 0.96);
-          }
-
-          #tabshelf-palette-root .ts-command-item.ts-focused {
-            border-color: rgba(148, 163, 184, 0.42);
-            background: rgba(241, 245, 249, 0.94);
-          }
-
-          #tabshelf-palette-root .ts-command-item.ts-active {
-            background: rgba(239, 246, 255, 0.92);
-            border-color: rgba(59, 130, 246, 0.36);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-          }
-
-          #tabshelf-palette-root .ts-command-item::before {
-            content: "";
-            position: absolute;
-            left: 2px;
-            top: 8px;
-            bottom: 8px;
-            width: 2px;
-            border-radius: 999px;
-            background: var(--ts-active-line);
-            opacity: 0;
-            transition: opacity 120ms ease;
-          }
-
-          #tabshelf-palette-root .ts-command-item.ts-active::before {
-            opacity: 1;
-          }
-
-          #tabshelf-palette-root .ts-command-item-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(241, 245, 249, 0.98);
-            color: #334155;
-          }
-
-          #tabshelf-palette-root .ts-command-item-icon svg {
-            width: 16px;
-            height: 16px;
-            display: block;
-          }
-
-          #tabshelf-palette-root .ts-command-item-copy {
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-          }
-
-          #tabshelf-palette-root .ts-command-item-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #0f172a;
-            line-height: 1.25;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-          #tabshelf-palette-root .ts-command-item-meta {
-            font-size: 11px;
-            color: #64748b;
-            line-height: 1.3;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
           }
 
           #tabshelf-palette-root .ts-input {
@@ -632,69 +400,6 @@
                 0 8px 24px rgba(59, 130, 246, 0.18);
             }
 
-            #tabshelf-palette-root .ts-command-trigger {
-              border-color: rgba(148, 163, 184, 0.3);
-              background: rgba(15, 23, 42, 0.62);
-              box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.06),
-                0 4px 10px rgba(2, 6, 23, 0.24);
-            }
-
-            #tabshelf-palette-root .ts-command-trigger:hover {
-              border-color: rgba(148, 163, 184, 0.46);
-              background: rgba(30, 41, 59, 0.9);
-            }
-
-            #tabshelf-palette-root .ts-command-trigger.ts-open {
-              border-color: rgba(96, 165, 250, 0.48);
-              background: rgba(59, 130, 246, 0.28);
-              color: #bfdbfe;
-            }
-
-            #tabshelf-palette-root .ts-command-icon {
-              background: transparent;
-              color: #cbd5e1;
-            }
-
-            #tabshelf-palette-root .ts-command-caret {
-              color: #94a3b8;
-            }
-
-            #tabshelf-palette-root .ts-command-menu {
-              background: rgba(15, 23, 42, 0.92);
-              border-color: rgba(148, 163, 184, 0.22);
-              box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.06),
-                0 18px 40px rgba(2, 6, 23, 0.38);
-            }
-
-            #tabshelf-palette-root .ts-command-item:hover {
-              border-color: rgba(148, 163, 184, 0.42);
-              background: rgba(30, 41, 59, 0.86);
-            }
-
-            #tabshelf-palette-root .ts-command-item.ts-focused {
-              border-color: rgba(148, 163, 184, 0.5);
-              background: rgba(51, 65, 85, 0.84);
-            }
-
-            #tabshelf-palette-root .ts-command-item.ts-active {
-              background: rgba(30, 58, 138, 0.34);
-              border-color: rgba(96, 165, 250, 0.52);
-            }
-
-            #tabshelf-palette-root .ts-command-item-icon {
-              background: rgba(15, 23, 42, 0.92);
-            }
-
-            #tabshelf-palette-root .ts-command-item-title {
-              color: var(--ts-text-main);
-            }
-
-            #tabshelf-palette-root .ts-command-item-meta {
-              color: var(--ts-text-sub);
-            }
-
             #tabshelf-palette-root .ts-input {
               color: var(--ts-text-main);
             }
@@ -723,17 +428,10 @@
         <section class="ts-wrap" role="dialog" aria-modal="true" aria-label="TabShelf 命令面板">
           <header class="ts-head">
             <div class="ts-search-bar">
-              <button class="ts-command-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="选择命令">
-                <span class="ts-command-icon" aria-hidden="true"></span>
-              </button>
               <input class="ts-input" type="text" spellcheck="false" autocomplete="off"
                 placeholder="搜索标签页、历史记录、书签">
               <button class="ts-close" type="button" aria-label="关闭面板">Esc</button>
             </div>
-            <div class="ts-command-hints" aria-label="常用命令">
-              ${commandHintMarkup}
-            </div>
-            <div class="ts-command-menu" role="listbox" aria-label="命令列表"></div>
           </header>
           <div class="ts-results"></div>
           <div class="ts-empty"></div>
@@ -748,76 +446,19 @@
 
       this.backdropEl = this.hostEl.querySelector('.ts-backdrop');
       this.panelEl = this.hostEl.querySelector('.ts-wrap');
-      this.commandTriggerEl = this.hostEl.querySelector('.ts-command-trigger');
-      this.commandMenuEl = this.hostEl.querySelector('.ts-command-menu');
       this.inputEl = this.hostEl.querySelector('.ts-input');
       this.resultsEl = this.hostEl.querySelector('.ts-results');
       this.emptyEl = this.hostEl.querySelector('.ts-empty');
       this.closeBtnEl = this.hostEl.querySelector('.ts-close');
 
-      // 兼容旧模板：运行时移除右侧命令快捷标签容器，确保入口唯一。
-      var legacyHintsEl = this.hostEl.querySelector('.ts-command-hints');
-      if (legacyHintsEl) {
-        legacyHintsEl.remove();
-      }
-
-      // 统一命令入口按钮结构：图标 + 当前类型 + 下拉箭头。
-      this.commandTriggerEl.innerHTML = `
-        <span class="ts-command-icon" aria-hidden="true"></span>
-      `;
-      this.commandIconEl = this.commandTriggerEl.querySelector('.ts-command-icon');
-      this.commandLabelEl = null;
-      this.commandTriggerEl.setAttribute('aria-label', '切换搜索类型');
-      this.commandTriggerEl.setAttribute('aria-controls', 'ts-command-menu');
-      this.commandMenuEl.id = 'ts-command-menu';
-
       // Initialize head icon once after the DOM nodes are ready.
       this.updateHeadIcon();
-      this.renderCommandMenu();
       this.bindEvents();
     }
 
     bindEvents() {
       this.backdropEl.addEventListener('click', () => this.close());
       this.closeBtnEl.addEventListener('click', () => this.close());
-      this.commandTriggerEl.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.toggleCommandMenu();
-      });
-      this.commandTriggerEl.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          this.toggleCommandMenu();
-          return;
-        }
-
-        if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          if (!this.isCommandMenuOpen) {
-            this.openCommandMenu();
-            return;
-          }
-          this.moveCommandMenuFocus(1);
-          return;
-        }
-
-        if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          if (!this.isCommandMenuOpen) {
-            this.openCommandMenu();
-            return;
-          }
-          this.moveCommandMenuFocus(-1);
-        }
-      });
-      this.commandMenuEl.addEventListener('click', (event) => {
-        const commandItem = event.target.closest('[data-ts-command-id]');
-        if (!commandItem) return;
-        const commandId = commandItem.dataset.tsCommandId || '';
-        this.applyCommandFromMenu(commandId);
-      });
-
       this.inputEl.addEventListener('input', () => {
         this.selectedIndex = 0;
         this.closeCommandMenu();
@@ -1013,7 +654,10 @@
       if (!target) return;
 
       // Keep menu open for interactions inside trigger/menu, close otherwise.
-      if (this.commandTriggerEl.contains(target) || this.commandMenuEl.contains(target)) {
+      if (
+        (this.commandTriggerEl && this.commandTriggerEl.contains(target))
+        || (this.commandMenuEl && this.commandMenuEl.contains(target))
+      ) {
         return;
       }
 
@@ -1312,29 +956,14 @@
     }
 
     updateHeadIcon() {
-      if (!this.commandIconEl || !this.inputEl || !this.commandTriggerEl) return;
+      if (!this.inputEl) return;
 
       const commandId = this.getCurrentCommandId(this.inputEl.value);
-      const commandItem = this.getCommandMenuItem(commandId);
-      const commandDisplayMeta = this.getCommandDisplayMeta(commandItem.id);
-
-      this.commandIconEl.innerHTML = this.getHeadIconMarkup(commandItem.id);
-      this.inputEl.placeholder = commandDisplayMeta.placeholder;
-
-      // 左侧按钮统一反馈“当前模式”。
-      this.commandIconEl.innerHTML = this.getHeadIconMarkup(commandItem.id);
-      if (this.commandLabelEl) {
-        this.commandLabelEl.textContent = commandDisplayMeta.triggerLabel;
-      }
-
+      const commandDisplayMeta = this.getCommandDisplayMeta(commandId);
       // placeholder 只负责提示“搜什么”，不再解释命令语法。
       this.inputEl.placeholder = commandDisplayMeta.placeholder;
-      this.commandTriggerEl.setAttribute('aria-label', `切换搜索类型，当前：${commandDisplayMeta.triggerLabel}`);
+      this.inputEl.setAttribute('aria-label', `搜索输入框，当前命令：${commandDisplayMeta.triggerLabel}`);
 
-      if (this.isCommandMenuOpen) {
-        this.renderCommandMenu();
-        this.syncCommandMenuPosition();
-      }
     }
 
     getCommandMenuItem(commandId) {
@@ -1342,38 +971,11 @@
     }
 
     getCommandDisplayMeta(commandId) {
-      const metaByCommandId = {
-        default: {
-          triggerLabel: '全部搜索',
-          placeholder: '搜索全部来源'
-        },
-        google: {
-          triggerLabel: 'Google',
-          placeholder: '搜索 Google 结果'
-        },
-        github: {
-          triggerLabel: 'GitHub',
-          placeholder: '搜索 GitHub 仓库或代码'
-        },
-        bookmarks: {
-          triggerLabel: '书签',
-          placeholder: '搜索书签'
-        },
-        history: {
-          triggerLabel: '历史',
-          placeholder: '搜索历史记录'
-        },
-        site: {
-          triggerLabel: '网址',
-          placeholder: '输入网址或站点关键词'
-        },
-        workflow: {
-          triggerLabel: '工作流',
-          placeholder: '搜索工作流'
-        }
+      const displayMeta = COMMAND_DISPLAY_META[commandId] || COMMAND_DISPLAY_META.default;
+      return {
+        ...displayMeta,
+        triggerLabel: commandId ? `/${commandId}` : '/all'
       };
-
-      return metaByCommandId[commandId] || metaByCommandId.default;
     }
 
     getCommandMenuIndex(commandId) {
@@ -1848,14 +1450,8 @@
       </svg>
     `,
     chatgpt: `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11.9 3.4a4 4 0 0 1 3.5 2l.8 1.4 1.6.1a4 4 0 0 1 2.8 6.8l-1 1.2.4 1.5a4 4 0 0 1-4.8 4.8l-1.5-.4-1.2 1a4 4 0 0 1-6.8-2.8l-.1-1.6-1.4-.8a4 4 0 0 1-2-3.5 4 4 0 0 1 2-3.5l1.4-.8.1-1.6a4 4 0 0 1 6.2-3.4Z"></path>
-        <path d="m9.1 7 5.8 3.3"></path>
-        <path d="m8.2 9.7 3.3 5.8"></path>
-        <path d="m10.4 16.2 6.7-.1"></path>
-        <path d="m14.5 16.8-3.2-5.8"></path>
-        <path d="m16 9.4-6.8.1"></path>
-        <path d="m13.4 7.8 3.4 5.8"></path>
+      <svg viewBox="146 227 268 265" fill="currentColor" aria-hidden="true">
+        <path d="M249.176 323.434V298.276C249.176 296.158 249.971 294.569 251.825 293.509L302.406 264.381C309.29 260.409 317.5 258.555 325.973 258.555C357.75 258.555 377.877 283.185 377.877 309.399C377.877 311.253 377.877 313.371 377.611 315.49L325.178 284.771C322.001 282.919 318.822 282.919 315.645 284.771L249.176 323.434ZM367.283 421.415V361.301C367.283 357.592 365.694 354.945 362.516 353.092L296.048 314.43L317.763 301.982C319.617 300.925 321.206 300.925 323.058 301.982L373.639 331.112C388.205 339.586 398.003 357.592 398.003 375.069C398.003 395.195 386.087 413.733 367.283 421.412V421.415ZM233.553 368.452L211.838 355.742C209.986 354.684 209.19 353.095 209.19 350.975V292.718C209.19 264.383 230.905 242.932 260.301 242.932C271.423 242.932 281.748 246.641 290.49 253.26L238.321 283.449C235.146 285.303 233.555 287.951 233.555 291.659V368.455L233.553 368.452ZM280.292 395.462L249.176 377.985V340.913L280.292 323.436L311.407 340.913V377.985L280.292 395.462ZM300.286 475.968C289.163 475.968 278.837 472.259 270.097 465.64L322.264 435.449C325.441 433.597 327.03 430.949 327.03 427.239V350.445L349.011 363.155C350.865 364.213 351.66 365.802 351.66 367.922V426.179C351.66 454.514 329.679 475.965 300.286 475.965V475.968ZM237.525 416.915L186.944 387.785C172.378 379.31 162.582 361.305 162.582 343.827C162.582 323.436 174.763 305.164 193.563 297.485V357.861C193.563 361.571 195.154 364.217 198.33 366.071L264.535 404.467L242.82 416.915C240.967 417.972 239.377 417.972 237.525 416.915ZM234.614 460.343C204.689 460.343 182.71 437.833 182.71 410.028C182.71 407.91 182.976 405.792 183.238 403.672L235.405 433.863C238.582 435.715 241.763 435.715 244.938 433.863L311.407 395.466V420.622C311.407 422.742 310.612 424.331 308.758 425.389L258.179 454.519C251.293 458.491 243.083 460.343 234.611 460.343H234.614ZM300.286 491.854C332.329 491.854 359.073 469.082 365.167 438.892C394.825 431.211 413.892 403.406 413.892 375.073C413.892 356.535 405.948 338.529 391.648 325.552C392.972 319.991 393.766 314.43 393.766 308.87C393.766 271.003 363.048 242.666 327.562 242.666C320.413 242.666 313.528 243.723 306.644 246.109C294.725 234.457 278.307 227.042 260.301 227.042C228.258 227.042 201.513 249.815 195.42 280.004C165.761 287.685 146.694 315.49 146.694 343.824C146.694 362.362 154.638 380.368 168.938 393.344C167.613 398.906 166.819 404.467 166.819 410.027C166.819 447.894 197.538 476.231 233.024 476.231C240.172 476.231 247.058 475.173 253.943 472.788C265.859 484.441 282.278 491.854 300.286 491.854Z"></path>
       </svg>
     `,
     github: `
