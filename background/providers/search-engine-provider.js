@@ -65,6 +65,9 @@ export class SearchEngineProvider {
         defaultActionId: 'open-url-current',
         actionIds: ['open-url-current', 'open-url-new-tab'],
         payload: {
+          // engineId lets the content UI fall back to an engine-specific icon
+          // when the remote favicon host does not return an image.
+          engineId: 'google',
           url: buildSearchEngineUrl('google', keyword),
           title: keyword
         }
@@ -79,6 +82,10 @@ export class SearchEngineProvider {
 
     if (intent.command.id === 'google') {
       return keyword ? [this.buildEngineItem('google', `用 Google 搜索 “${keyword}”`, keyword)] : [];
+    }
+
+    if (intent.command.id === 'chatgpt') {
+      return keyword ? [this.buildEngineItem('chatgpt', `用 ChatGPT 搜索 “${keyword}”`, keyword)] : [];
     }
 
     if (intent.command.id === 'github') {
@@ -122,6 +129,7 @@ export class SearchEngineProvider {
       defaultActionId: 'open-url-current',
       actionIds: ['open-url-current', 'open-url-new-tab'],
       payload: {
+        engineId,
         url: buildSearchEngineUrl(engineId, keyword),
         title: keyword
       }

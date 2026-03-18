@@ -5,6 +5,7 @@ export const SETTINGS_KEY = 'bookmark_tab_settings';
 // Search engine base URLs used by providers.
 export const GOOGLE_SEARCH_BASE_URL = 'https://www.google.com/search?udm=50';
 export const GITHUB_SEARCH_BASE_URL = 'https://github.com/search?q=';
+export const CHATGPT_SEARCH_BASE_URL = 'https://chatgpt.com/?prompt=';
 
 // Extension-level settings with safe defaults.
 export const defaultExtensionSettings = {
@@ -41,6 +42,14 @@ export const BUILTIN_COMMANDS = [
     title: 'Google 搜索',
     description: '使用 Google 搜索输入关键词',
     placeholder: '/google 关键词',
+    argumentMode: 'text'
+  },
+  {
+    id: 'chatgpt',
+    aliases: [],
+    title: 'ChatGPT 搜索',
+    description: '使用 ChatGPT 搜索输入关键词',
+    placeholder: '/chatgpt 关键词',
     argumentMode: 'text'
   },
   {

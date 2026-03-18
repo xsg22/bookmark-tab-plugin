@@ -1,5 +1,6 @@
 import {
   BUILTIN_COMMANDS,
+  CHATGPT_SEARCH_BASE_URL,
   GITHUB_SEARCH_BASE_URL,
   GOOGLE_SEARCH_BASE_URL
 } from './palette-constants.js';
@@ -175,6 +176,12 @@ export function getUsageBonus(usageStats, options = {}) {
 // 统一构造搜索引擎结果，Provider 就只需要传命令类型和关键词。
 export function buildSearchEngineUrl(engineId, keyword) {
   const normalizedKeyword = String(keyword || '').trim();
+
+  // ChatGPT command uses the prompt query param so the provider only needs
+  // to pass the normalized keyword.
+  if (engineId === 'chatgpt') {
+    return `${CHATGPT_SEARCH_BASE_URL}${encodeURIComponent(normalizedKeyword)}`;
+  }
 
   if (engineId === 'github') {
     return `${GITHUB_SEARCH_BASE_URL}${encodeURIComponent(normalizedKeyword)}`;

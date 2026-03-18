@@ -4,6 +4,14 @@ const GOOGLE_SEARCH_BASE_URL = 'https://www.google.com/search?udm=50';
 const MAX_RECENT_HISTORY = 200;
 const DEFAULT_RECENT_VISIBLE_COUNT = 20;
 const MAX_GOOGLE_RECENT_SEARCHES = 6;
+// 输入停止多长时间后，认为“输入阶段结束”，恢复结果项过渡动画。
+const SEARCH_TYPING_IDLE_MS = 140;
+// Search empty-state chips: clicking one will auto-fill the input and re-run search.
+const SEARCH_EMPTY_SUGGESTIONS = [
+  { label: '\u6309\u4e66\u7b7e\u540d\u641c', value: 'bookmark' },
+  { label: '\u6309\u57df\u540d\u641c', value: 'github.com' },
+  { label: '\u6309\u6587\u4ef6\u5939\u641c', value: '\u5de5\u4f5c' }
+];
 
 // 默认配置集中在一起，方便后续扩展更多工作台选项。
 const defaultSettings = {
@@ -36,6 +44,8 @@ const state = {
   historyItems: [],
   recentVisibleCount: DEFAULT_RECENT_VISIBLE_COUNT,
   searchResults: [],
+  searchQuery: '',
+  isSearchComposing: false,
   activeSearchIndex: -1,
   dragFolderId: null,
   highlightedBookmarkId: null,
@@ -107,6 +117,7 @@ const bookmarkEditCancelBtnEl = document.getElementById('bookmark-edit-cancel-bt
 
 let lastModalTriggerEl = null;
 let copiedBookmarkHighlightTimer = null;
+let searchTypingTimer = null;
 
 // 常用 SVG 图标用模板字符串复用，避免重复拼装。
 const folderSvg = `
@@ -459,6 +470,18 @@ function setupEventListeners() {
 
   // 顶部搜索：实时检索本地数据，并保持纯键盘可操作。
   globalSearchInputEl.addEventListener('input', () => {
+    // 中文输入法拼写过程中先不刷新结果，避免候选阶段频繁抖动。
+    if (state.isSearchComposing) return;
+    updateSearchResults(globalSearchInputEl.value);
+  });
+
+  globalSearchInputEl.addEventListener('compositionstart', () => {
+    state.isSearchComposing = true;
+  });
+
+  globalSearchInputEl.addEventListener('compositionend', () => {
+    // 组合输入确认后再统一刷新，减少“输入中闪烁”。
+    state.isSearchComposing = false;
     updateSearchResults(globalSearchInputEl.value);
   });
 
@@ -471,12 +494,22 @@ function setupEventListeners() {
   });
 
   searchResultsPanelEl.addEventListener('mousemove', (event) => {
+    // Typing phase prioritizes stable active state; skip hover-driven selection updates.
+    if (searchShellEl.classList.contains('is-typing')) return;
+
     const item = event.target.closest('[data-result-index]');
     if (!item) return;
     setActiveSearchIndex(Number(item.dataset.resultIndex));
   });
 
   searchResultsPanelEl.addEventListener('click', (event) => {
+    // Handle empty-state suggestion chips before regular result item delegation.
+    const suggestionChip = event.target.closest('[data-search-suggestion]');
+    if (suggestionChip) {
+      applySearchSuggestion(suggestionChip.dataset.searchSuggestion || '');
+      return;
+    }
+
     const item = event.target.closest('[data-result-index]');
     if (!item) return;
     const index = Number(item.dataset.resultIndex);
@@ -1854,6 +1887,7 @@ function handleDocumentClick(event) {
 
 function updateSearchResults(keyword) {
   const query = keyword.trim();
+  state.searchQuery = query;
   clearSearchBtnEl.classList.toggle('hidden', !query);
 
   if (!query) {
@@ -1861,19 +1895,49 @@ function updateSearchResults(keyword) {
     return;
   }
 
-  state.searchResults = buildSearchResults(query);
-  // 输入搜索时默认不选中任何结果，回车直接触发 Google 搜索。
-  state.activeSearchIndex = -1;
+  // Preserve current active item when possible to avoid active-state flicker.
+  const hadActiveSelection = state.activeSearchIndex >= 0 && state.activeSearchIndex < state.searchResults.length;
+  const previousActiveKey = hadActiveSelection ? state.searchResults[state.activeSearchIndex].key : null;
+
+  // Keep ordering stable across keystrokes so rows do not jump around.
+  state.searchResults = buildSearchResults(query, state.searchResults);
+  markSearchTyping();
+
+  state.activeSearchIndex = previousActiveKey
+    ? state.searchResults.findIndex((result) => result.key === previousActiveKey)
+    : -1;
+
+  if (state.activeSearchIndex < 0 && hadActiveSelection && state.searchResults.length > 0) {
+    // When previous active item disappears, pin to first item instead of dropping active state.
+    state.activeSearchIndex = 0;
+  }
+
   renderSearchResults();
 }
 
-// 搜索联想只展示本地结果，避免在输入阶段把 Google 搜索项混进来。
-function buildSearchResults(query) {
-  return [
+function buildSearchResults(query, previousResults = []) {
+  const mergedResults = [
     ...buildBookmarkSearchResults(query),
     ...buildHistorySearchResults(query)
-  ]
-    .sort((a, b) => b.score - a.score)
+  ];
+
+  // Stable order first, score order second.
+  const previousIndexByKey = new Map();
+  previousResults.forEach((result, index) => {
+    previousIndexByKey.set(result.key, index);
+  });
+
+  return mergedResults
+    .sort((a, b) => {
+      const aPrev = previousIndexByKey.has(a.key) ? previousIndexByKey.get(a.key) : Number.MAX_SAFE_INTEGER;
+      const bPrev = previousIndexByKey.has(b.key) ? previousIndexByKey.get(b.key) : Number.MAX_SAFE_INTEGER;
+
+      if (aPrev !== bPrev) {
+        return aPrev - bPrev;
+      }
+
+      return b.score - a.score;
+    })
     .slice(0, 8);
 }
 
@@ -1957,39 +2021,79 @@ function buildGoogleSearchResult(query) {
 }
 
 function renderSearchResults() {
+  // Read the latest query on each render so title/meta highlighting stays in sync.
+  const currentQuery = state.searchQuery || globalSearchInputEl.value.trim();
+
   if (!state.searchResults.length) {
-    searchResultsPanelEl.innerHTML = '<div class="search-empty">无本地结果，按 Enter 使用 Google 搜索。</div>';
+    searchResultsPanelEl.innerHTML = buildSearchEmptyMarkup(currentQuery);
     searchResultsPanelEl.classList.remove('hidden');
     return;
   }
 
-  searchResultsPanelEl.innerHTML = '';
   searchResultsPanelEl.classList.remove('hidden');
 
-  state.searchResults.forEach((result, index) => {
-    const item = document.createElement('div');
-    item.className = `search-result-item ${index === state.activeSearchIndex ? 'is-active' : ''}`;
-    item.dataset.resultIndex = String(index);
-
-    const metaMarkup = result.meta
-      ? `<span class="search-result-meta">${escapeHTML(result.meta)}</span>`
-      : '';
-
-    item.innerHTML = `
-      <span class="search-result-icon ${getResultIconClassName(result.type)}">${getResultIconMarkup(result.icon)}</span>
-      <span class="search-result-main">
-        <span class="search-result-title">${escapeHTML(result.title)}</span>
-        ${metaMarkup}
-      </span>
-      <span class="search-result-badge">${getResultBadgeLabel(result.type)}</span>
-    `;
-
-    searchResultsPanelEl.appendChild(item);
+  // Reuse nodes by stable key to avoid tearing down active state on every keystroke.
+  const existingNodesByKey = new Map();
+  Array.from(searchResultsPanelEl.querySelectorAll('.search-result-item')).forEach((node) => {
+    if (node.dataset.resultKey) {
+      existingNodesByKey.set(node.dataset.resultKey, node);
+    }
   });
+
+  const nextNodes = state.searchResults.map((result, index) => {
+    const item = existingNodesByKey.get(result.key) || document.createElement('div');
+    updateSearchResultItemNode(item, result, index);
+    return item;
+  });
+
+  // Move/insert only where needed.
+  nextNodes.forEach((node, index) => {
+    const currentNode = searchResultsPanelEl.children[index];
+    if (currentNode !== node) {
+      searchResultsPanelEl.insertBefore(node, currentNode || null);
+    }
+  });
+
+  // Remove stale nodes when the result count shrinks.
+  while (searchResultsPanelEl.children.length > nextNodes.length) {
+    searchResultsPanelEl.removeChild(searchResultsPanelEl.lastElementChild);
+  }
 
   scrollActiveSearchResultIntoView();
 }
 
+function updateSearchResultItemNode(item, result, index) {
+  const isActive = index === state.activeSearchIndex;
+  if (!item.classList.contains('search-result-item')) {
+    item.classList.add('search-result-item');
+  }
+  item.classList.toggle('is-active', isActive);
+  item.dataset.resultIndex = String(index);
+  item.dataset.resultKey = result.key;
+  item.setAttribute('role', 'option');
+  item.setAttribute('aria-selected', String(isActive));
+
+  // Signature excludes current query on purpose:
+  // avoid rewriting item DOM on each keystroke, which causes visible flicker.
+  const renderSignature = `${result.type}\u0001${result.icon}\u0001${result.title}\u0001${result.meta || ''}`;
+  if (item.dataset.renderSignature === renderSignature) {
+    return;
+  }
+
+  const metaMarkup = result.meta
+    ? `<span class="search-result-meta">${escapeHTML(result.meta)}</span>`
+    : '';
+
+  item.innerHTML = `
+    <span class="search-result-icon ${getResultIconClassName(result.type)}">${getResultIconMarkup(result.icon)}</span>
+    <span class="search-result-main">
+      <span class="search-result-title">${escapeHTML(result.title)}</span>
+      ${metaMarkup}
+    </span>
+    <span class="search-result-badge">${getResultBadgeLabel(result.type)}</span>
+  `;
+  item.dataset.renderSignature = renderSignature;
+}
 function getHistoryDedupKey(url) {
   try {
     const parsed = new URL(normalizeUrl(url));
@@ -2027,7 +2131,9 @@ function setActiveSearchIndex(index) {
   }
 
   Array.from(searchResultsPanelEl.querySelectorAll('.search-result-item')).forEach((item, itemIndex) => {
-    item.classList.toggle('is-active', itemIndex === state.activeSearchIndex);
+    const isActive = itemIndex === state.activeSearchIndex;
+    item.classList.toggle('is-active', isActive);
+    item.setAttribute('aria-selected', String(isActive));
   });
 
   scrollActiveSearchResultIntoView();
@@ -2036,15 +2142,78 @@ function setActiveSearchIndex(index) {
 function scrollActiveSearchResultIntoView() {
   const activeEl = searchResultsPanelEl.querySelector('.search-result-item.is-active');
   if (!activeEl) return;
-  activeEl.scrollIntoView({ block: 'nearest' });
+
+  const panelRect = searchResultsPanelEl.getBoundingClientRect();
+  const itemRect = activeEl.getBoundingClientRect();
+  const outOfView = itemRect.top < panelRect.top || itemRect.bottom > panelRect.bottom;
+
+  if (outOfView) {
+    activeEl.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 function closeSearchResults() {
   state.searchResults = [];
+  state.searchQuery = '';
   state.activeSearchIndex = -1;
+  clearSearchTypingState();
   searchResultsPanelEl.classList.add('hidden');
   searchResultsPanelEl.innerHTML = '';
   clearSearchBtnEl.classList.toggle('hidden', !globalSearchInputEl.value.trim());
+}
+
+// Mark the shell while typing so CSS can disable item transitions and avoid flicker.
+function markSearchTyping() {
+  searchShellEl.classList.add('is-typing');
+
+  if (searchTypingTimer) {
+    clearTimeout(searchTypingTimer);
+  }
+
+  searchTypingTimer = setTimeout(() => {
+    searchShellEl.classList.remove('is-typing');
+    searchTypingTimer = null;
+  }, SEARCH_TYPING_IDLE_MS);
+}
+
+function clearSearchTypingState() {
+  searchShellEl.classList.remove('is-typing');
+
+  if (searchTypingTimer) {
+    clearTimeout(searchTypingTimer);
+    searchTypingTimer = null;
+  }
+}
+// Keep empty state actionable by providing quick suggestion chips.
+function buildSearchEmptyMarkup(query) {
+  const escapedQuery = escapeHTML(query);
+  const chipsMarkup = SEARCH_EMPTY_SUGGESTIONS.map((suggestion) => {
+    const label = escapeHTML(suggestion.label);
+    const value = escapeHTML(suggestion.value);
+    return `
+      <button class="search-empty-chip" type="button" data-search-suggestion="${value}" aria-label="\u4f7f\u7528\u5efa\u8bae\u8bcd ${label}">
+        ${label}
+      </button>
+    `;
+  }).join('');
+
+  return `
+    <div class="search-empty">
+      <p class="search-empty-title">\u672a\u627e\u5230\u201c${escapedQuery}\u201d\u7684\u672c\u5730\u7ed3\u679c</p>
+      <p class="search-empty-hint">\u8bd5\u8bd5\uff1a\u4e66\u7b7e\u540d / \u57df\u540d / \u6587\u4ef6\u5939\u540d\u79f0\u3002\u6309 Enter \u53ef\u76f4\u63a5\u4f7f\u7528 Google Agent \u641c\u7d22\u3002</p>
+      <div class="search-empty-suggestions">${chipsMarkup}</div>
+    </div>
+  `;
+}
+// Reuse the existing search pipeline so suggestion clicks stay consistent with typing.
+function applySearchSuggestion(suggestionValue) {
+  const value = String(suggestionValue || '').trim();
+  if (!value) return;
+
+  globalSearchInputEl.value = value;
+  updateSearchResults(value);
+  globalSearchInputEl.focus();
+  globalSearchInputEl.setSelectionRange(value.length, value.length);
 }
 
 async function openSearchResult(result, openInNewTab) {

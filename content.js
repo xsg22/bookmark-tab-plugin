@@ -1596,6 +1596,9 @@
       if (!commandToken) return '';
 
       if (commandToken === 'g' || commandToken === 'google') return 'google';
+      // Keep /chat visually locked to ChatGPT while still reserving execution
+      // for the full /chatgpt command token.
+      if (commandToken === 'chat' || commandToken === 'chatgpt') return 'chatgpt';
       if (commandToken === 'gh' || commandToken === 'github') return 'github';
       if (commandToken === 'h' || commandToken === 'his' || commandToken === 'history') return 'history';
       if (commandToken === 'b' || commandToken === 'bm' || commandToken === 'bookmark' || commandToken === 'bookmarks') return 'bookmarks';
@@ -1706,6 +1709,12 @@
         return this.getHeadIconMarkup(item?.payload?.commandId || '');
       }
 
+      // Search engine results can expose an engineId so the fallback icon
+      // stays recognizable even when the site favicon cannot be loaded.
+      if (item?.source === 'search-engine' && item?.payload?.engineId) {
+        return this.getHeadIconMarkup(item.payload.engineId);
+      }
+
       if (item?.source === 'bookmark') return ICON_MARKUPS.bookmarks;
       if (item?.source === 'history') return ICON_MARKUPS.history;
       if (item?.source === 'tab') return ICON_MARKUPS.tab;
@@ -1715,6 +1724,7 @@
 
     getHeadIconMarkup(commandId) {
       if (commandId === 'google') return ICON_MARKUPS.google;
+      if (commandId === 'chatgpt') return ICON_MARKUPS.chatgpt;
       if (commandId === 'github') return ICON_MARKUPS.github;
       if (commandId === 'history') return ICON_MARKUPS.history;
       if (commandId === 'bookmarks') return ICON_MARKUPS.bookmarks;
@@ -1736,6 +1746,12 @@
       label: 'Google 搜索',
       hint: '/google 关键词',
       query: '/google '
+    },
+    {
+      id: 'chatgpt',
+      label: 'ChatGPT 搜索',
+      hint: '/chatgpt 关键词',
+      query: '/chatgpt '
     },
     {
       id: 'github',
@@ -1778,6 +1794,10 @@
     google: {
       triggerLabel: 'Google',
       placeholder: '搜索 Google 结果'
+    },
+    chatgpt: {
+      triggerLabel: 'ChatGPT',
+      placeholder: '搜索 ChatGPT 结果'
     },
     github: {
       triggerLabel: 'GitHub',
@@ -1825,6 +1845,17 @@
         <path d="M12 22c2.7 0 4.9-.9 6.5-2.4l-3.3-2.6c-.9.6-2 .9-3.2.9-2.5 0-4.6-1.7-5.4-4H3.2v2.7A10 10 0 0 0 12 22z" fill="#34A853"></path>
         <path d="M6.6 13.9a6 6 0 0 1 0-3.8V7.4H3.2a10 10 0 0 0 0 9.2l3.4-2.7z" fill="#FBBC05"></path>
         <path d="M12 6.1c1.4 0 2.6.5 3.6 1.4l2.8-2.8A10 10 0 0 0 3.2 7.4l3.4 2.7c.8-2.3 2.9-4 5.4-4z" fill="#EA4335"></path>
+      </svg>
+    `,
+    chatgpt: `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11.9 3.4a4 4 0 0 1 3.5 2l.8 1.4 1.6.1a4 4 0 0 1 2.8 6.8l-1 1.2.4 1.5a4 4 0 0 1-4.8 4.8l-1.5-.4-1.2 1a4 4 0 0 1-6.8-2.8l-.1-1.6-1.4-.8a4 4 0 0 1-2-3.5 4 4 0 0 1 2-3.5l1.4-.8.1-1.6a4 4 0 0 1 6.2-3.4Z"></path>
+        <path d="m9.1 7 5.8 3.3"></path>
+        <path d="m8.2 9.7 3.3 5.8"></path>
+        <path d="m10.4 16.2 6.7-.1"></path>
+        <path d="m14.5 16.8-3.2-5.8"></path>
+        <path d="m16 9.4-6.8.1"></path>
+        <path d="m13.4 7.8 3.4 5.8"></path>
       </svg>
     `,
     github: `
