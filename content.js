@@ -425,7 +425,7 @@
           }
         </style>
         <div class="ts-backdrop" data-ts-close="true"></div>
-        <section class="ts-wrap" role="dialog" aria-modal="true" aria-label="TabShelf 命令面板">
+        <section class="ts-wrap" role="dialog" aria-modal="true" aria-label="SearchDeck 命令面板">
           <header class="ts-head">
             <div class="ts-search-bar">
               <input class="ts-input" type="text" spellcheck="false" autocomplete="off"

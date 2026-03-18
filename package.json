@@ -1,5 +1,5 @@
 {
-  "name": "bookmark-tab-plugin",
+  "name": "searchdeck-tab-plugin",
   "private": true,
   "type": "module",
   "dependencies": {
