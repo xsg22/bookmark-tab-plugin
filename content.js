@@ -72,15 +72,18 @@
         <style id="tabshelf-palette-style">
           #tabshelf-palette-root {
             --ts-panel-width: min(588px, calc(100vw - 32px));
-            --ts-panel-radius: 22px;
+            /* Outer panel corner: force right-angle preview for visual validation. */
+            --ts-panel-radius: 0px;
             --ts-panel-padding: 10px;
             --ts-input-height: 48px;
             --ts-item-height: 54px;
             --ts-text-main: #0f172a;
             --ts-text-sub: #64748b;
             --ts-line: rgba(15, 23, 42, 0.07);
-            --ts-panel-bg: rgba(255, 255, 255, 0.84);
-            --ts-surface-bg: rgba(248, 250, 252, 0.8);
+            /* Result panel container: stronger transparency so the change is obvious. */
+            --ts-panel-bg: rgba(255, 255, 255, 0.62);
+            /* Search box surface: lower alpha for a slightly more transparent look. */
+            --ts-surface-bg: rgba(248, 250, 252, 0.72);
             --ts-control-bg: rgba(255, 255, 255, 0.72);
             --ts-muted-bg: rgba(255, 255, 255, 0.72);
             --ts-hover-bg: rgba(148, 163, 184, 0.08);
@@ -138,7 +141,8 @@
             align-items: center;
             min-height: var(--ts-input-height);
             padding: 0 10px;
-            border-radius: 15px;
+            /* Search box corner: match right-angle style for comparison. */
+            border-radius: 0;
             background: var(--ts-surface-bg);
             border: 1px solid rgba(203, 213, 225, 0.65);
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
@@ -378,8 +382,10 @@
               --ts-text-main: #f8fafc;
               --ts-text-sub: #94a3b8;
               --ts-line: rgba(148, 163, 184, 0.16);
-              --ts-panel-bg: rgba(15, 23, 42, 0.82);
-              --ts-surface-bg: rgba(30, 41, 59, 0.72);
+              /* Keep strong transparency adjustment in dark mode as well. */
+              --ts-panel-bg: rgba(15, 23, 42, 0.62);
+              /* Keep similar transparency behavior in dark mode. */
+              --ts-surface-bg: rgba(30, 41, 59, 0.62);
               --ts-control-bg: rgba(15, 23, 42, 0.58);
               --ts-muted-bg: rgba(148, 163, 184, 0.12);
               --ts-hover-bg: rgba(148, 163, 184, 0.12);
@@ -1391,7 +1397,7 @@
   const COMMAND_DISPLAY_META = {
     default: {
       triggerLabel: '全部搜索',
-      placeholder: '搜索全部来源'
+      placeholder: '搜索全部来源，或使用‘/’选择命令'
     },
     google: {
       triggerLabel: 'Google',
