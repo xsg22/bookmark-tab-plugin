@@ -6,8 +6,8 @@ import {
 
 const paletteController = new PaletteController();
 
-// 快捷键和扩展图标点击都走同一个入口，
-// 保证命令面板入口只有一套调度逻辑。
+// Keyboard shortcut and toolbar click share the same entry path so the
+// extension keeps one clear, single-purpose interaction model.
 chrome.commands.onCommand.addListener((command) => {
   if (command !== EXTENSION_COMMANDS.TOGGLE_PALETTE) return;
   void togglePaletteForActiveTab();
@@ -17,7 +17,8 @@ chrome.action.onClicked.addListener(() => {
   void togglePaletteForActiveTab();
 });
 
-// content script 只负责 UI，真正的搜索和动作执行统一由 background 编排。
+// The content script owns the overlay UI. Background only handles search and
+// action execution so every surface reuses the same behavior contract.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') {
     return false;
@@ -75,8 +76,8 @@ async function togglePaletteForActiveTab() {
   if (!activeTab || !activeTab.id) return;
 
   try {
-    // 通过 activeTab + scripting 动态注入，尽量避免申请全站点常驻权限，
-    // 这样对发布审核和安装提示都更友好。
+    // Use activeTab + scripting for on-demand injection so we do not need a
+    // broader host permission footprint for the shortcut palette.
     await chrome.scripting.executeScript({
       target: { tabId: activeTab.id },
       files: ['content.js']
@@ -86,11 +87,9 @@ async function togglePaletteForActiveTab() {
       type: PALETTE_MESSAGE_TYPES.TOGGLE
     });
   } catch (error) {
-    // 在 chrome:// 等受限页面无法注入时，先回退到扩展自己的页面，
-    // 保证快捷键至少有一个稳定的落点。
-    await chrome.tabs.create({
-      url: chrome.runtime.getURL('newtab.html')
-    });
+    // Keep the extension single-purpose. If Chrome blocks injection on a
+    // restricted page, stop here instead of redirecting to another UI.
+    console.warn('SearchDeck palette is unavailable on this page.', error);
   }
 }
 
@@ -101,4 +100,3 @@ function getActiveTab() {
     });
   });
 }
-

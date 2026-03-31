@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SearchDeck - New Tab Search Hub",
+  "name": "SearchDeck Shortcut Search",
   "version": "1.0",
-  "description": "Turn Chrome's new tab into a keyboard-friendly global search workspace for bookmarks, history, and web results.",
+  "description": "Open a keyboard-friendly shortcut search palette for bookmarks, history, tabs, and web results.",
   "permissions": [
     "bookmarks",
     "storage",
@@ -25,14 +25,11 @@
   "commands": {
     "toggle-palette": {
       "suggested_key": {
-        "default": "Ctrl+Shift+K",
-        "mac": "Command+Shift+K"
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
       },
-      "description": "打开 SearchDeck 命令面板"
+      "description": "Open the SearchDeck shortcut search palette"
     }
-  },
-  "chrome_url_overrides": {
-    "newtab": "newtab.html"
   },
   "action": {
     "default_icon": {
@@ -41,6 +38,6 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "SearchDeck - New Tab Search Hub"
+    "default_title": "SearchDeck Shortcut Search"
   }
 }

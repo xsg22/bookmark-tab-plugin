@@ -892,7 +892,7 @@ body.hide-google-panel .main-panel {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-content: start;
-  padding: 0 18px 18px;
+  padding: 0 18px 88px;
 }
 
 .bookmark-grid::-webkit-scrollbar {
@@ -911,6 +911,8 @@ body.hide-google-panel .main-panel {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
+  overflow: visible;
+  cursor: grab;
   transition: var(--transition);
 }
 
@@ -924,6 +926,10 @@ body.hide-google-panel .main-panel {
   transform: translateY(-3px);
   border-color: rgba(47, 99, 215, 0.18);
   box-shadow: var(--shadow-md);
+}
+
+.bookmark-card:active {
+  cursor: grabbing;
 }
 
 .bookmark-card.is-keyboard-selected {
@@ -946,24 +952,66 @@ body.hide-google-panel .main-panel {
   animation: bookmark-copy-highlight 2.6s ease;
 }
 
+.bookmark-card.is-delete-layer-active,
+.bookmark-card.is-drop-target,
+.bookmark-card.is-dragging {
+  z-index: 12;
+}
+
+.bookmark-card.is-dragging {
+  opacity: 0.62;
+  transform: scale(0.985);
+  box-shadow: none;
+  cursor: grabbing;
+}
+
+.bookmark-card.is-drop-target::before,
+.bookmark-card.is-drop-target::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.bookmark-card.is-drop-target::before {
+  inset: -4px;
+  border: 1px dashed rgba(47, 99, 215, 0.28);
+  border-radius: 20px;
+}
+
+.bookmark-card.is-drop-target::after {
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(47, 99, 215, 0.14);
+}
+
+.bookmark-card.is-drop-target.drop-before::after {
+  left: -6px;
+}
+
+.bookmark-card.is-drop-target.drop-after::after {
+  right: -6px;
+}
+
 .bookmark-card-body {
   display: block;
   text-decoration: none;
+  min-width: 0;
 }
 
 .bookmark-card-main {
   min-width: 0;
-  flex: 1;
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  padding-right: 8px;
 }
 
 .bookmark-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  position: relative;
+  min-width: 0;
 }
 
 .bookmark-icon {
@@ -1009,30 +1057,34 @@ body.hide-google-panel .main-panel {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
   justify-content: flex-end;
   opacity: 0;
-  transform: translateY(-2px);
+  pointer-events: none;
+  transform: translateY(-4px);
   transition: var(--transition);
 }
 
 .bookmark-actions-wrap {
-  position: relative;
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  flex-shrink: 0;
   gap: 8px;
+  z-index: 3;
 }
 
 .bookmark-card:hover .bookmark-actions,
 .bookmark-card:focus-within .bookmark-actions {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
 .bookmark-card.has-delete-confirm .bookmark-actions {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
@@ -1052,15 +1104,15 @@ body.hide-google-panel .main-panel {
 
 .bookmark-delete-confirm {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: 0;
-  width: 190px;
+  width: 208px;
   padding: 12px;
   border-radius: 16px;
   border: 1px solid var(--border-color);
   background: var(--panel-strong);
   box-shadow: var(--shadow-md);
-  z-index: 4;
+  z-index: 14;
 }
 
 .bookmark-delete-confirm__text {
@@ -1811,6 +1863,29 @@ body.hide-google-panel .main-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .bookmark-card-main {
+    padding-right: 0;
+  }
+
+  .bookmark-actions-wrap {
+    position: static;
+    margin-top: 10px;
+    align-items: flex-start;
+  }
+
+  .bookmark-actions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .bookmark-delete-confirm {
+    position: static;
+    width: 100%;
+  }
+
   .recent-row {
     grid-template-columns: 40px minmax(0, 1fr);
   }
@@ -1840,6 +1915,27 @@ body.hide-google-panel .main-panel {
 
   .bookmark-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bookmark-card.is-drop-target::after {
+    left: 14px;
+    right: 14px;
+    width: auto;
+    height: 3px;
+    top: auto;
+    bottom: auto;
+  }
+
+  .bookmark-card.is-drop-target.drop-before::after {
+    left: 14px;
+    right: 14px;
+    top: -6px;
+  }
+
+  .bookmark-card.is-drop-target.drop-after::after {
+    left: 14px;
+    right: 14px;
+    bottom: -6px;
   }
 
   .google-agent-actions {

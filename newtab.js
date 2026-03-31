@@ -1,3 +1,9 @@
+import {
+  buildBookmarkCardClassName,
+  getBookmarkDropPosition,
+  getReorderedBookmarkIndex
+} from './shared/bookmark-card-helpers.js';
+
 const DEFAULT_FOLDER_KEY = 'bookmark_tab_default_folder';
 const SETTINGS_KEY = 'bookmark_tab_settings';
 const GOOGLE_SEARCH_BASE_URL = 'https://www.google.com/search?udm=50';
@@ -48,6 +54,10 @@ const state = {
   isSearchComposing: false,
   activeSearchIndex: -1,
   dragFolderId: null,
+  dragBookmarkId: null,
+  bookmarkDropTargetId: null,
+  bookmarkDropPosition: null,
+  isBookmarkMovePending: false,
   highlightedBookmarkId: null,
   pendingRevealBookmarkId: null,
   pendingDeleteBookmarkId: null,
@@ -537,6 +547,10 @@ function setupEventListeners() {
 
   // 书签卡片和最近流量按钮都使用事件代理，减少重复绑定。
   bookmarkGridEl.addEventListener('click', handleBookmarkGridClick);
+  bookmarkGridEl.addEventListener('dragstart', handleBookmarkCardDragStart);
+  bookmarkGridEl.addEventListener('dragover', handleBookmarkCardDragOver);
+  bookmarkGridEl.addEventListener('drop', handleBookmarkCardDrop);
+  bookmarkGridEl.addEventListener('dragend', handleBookmarkCardDragEnd);
   recentListEl.addEventListener('click', handleRecentListClick);
 
   // 左侧分组列表支持点击、拖拽排序。
@@ -1184,14 +1198,22 @@ function renderBookmarksView() {
     const note = notes[bookmark.id] || '';
     const isDeleteConfirmOpen = state.pendingDeleteBookmarkId === bookmark.id;
     const isHighlightedBookmark = state.highlightedBookmarkId === bookmark.id;
+    const isDraggingBookmark = state.dragBookmarkId === bookmark.id;
+    const isDropTarget = state.bookmarkDropTargetId === bookmark.id;
+    const dropPosition = isDropTarget ? state.bookmarkDropPosition : null;
     const card = document.createElement('article');
-    card.className = [
-      'bookmark-card',
-      isHighlightedBookmark ? 'is-copy-highlight' : '',
-      isDeleteConfirmOpen ? 'has-delete-confirm' : ''
-    ].filter(Boolean).join(' ');
+    card.className = buildBookmarkCardClassName({
+      isDeleteConfirmOpen,
+      isHighlightedBookmark,
+      isDragging: isDraggingBookmark,
+      isDropTarget,
+      dropPosition
+    });
     card.dataset.bookmarkId = bookmark.id;
     card.dataset.url = bookmark.url;
+    card.draggable = !state.isBookmarkMovePending;
+    card.setAttribute('aria-grabbed', String(isDraggingBookmark));
+    card.title = state.isBookmarkMovePending ? '正在更新书签顺序' : '拖拽可调整书签顺序';
 
     card.innerHTML = `
       <div class="bookmark-card-top">
@@ -1201,9 +1223,10 @@ function renderBookmarksView() {
           data-open-bookmark="true"
           data-url="${escapeHTML(bookmark.url)}"
           title="${escapeHTML(bookmark.title)}"
+          draggable="false"
         >
           <div class="bookmark-icon">
-            <img src="${getFaviconUrl(bookmark.url)}" alt="" loading="lazy">
+            <img src="${getFaviconUrl(bookmark.url)}" alt="" loading="lazy" draggable="false">
           </div>
           <div class="bookmark-summary">
             <div class="bookmark-title">${escapeHTML(bookmark.title)}</div>
@@ -1213,16 +1236,16 @@ function renderBookmarksView() {
         </a>
         <div class="bookmark-actions-wrap">
           <div class="bookmark-actions">
-            <button class="bookmark-action" type="button" data-bookmark-action="copy" data-bookmark-id="${bookmark.id}" title="复制">${copySvg}</button>
-            <button class="bookmark-action" type="button" data-bookmark-action="edit" data-bookmark-id="${bookmark.id}" title="编辑">${editSvg}</button>
-            <button class="bookmark-action ${isDeleteConfirmOpen ? 'is-danger' : ''}" type="button" data-bookmark-action="delete" data-bookmark-id="${bookmark.id}" title="删除" aria-expanded="${isDeleteConfirmOpen ? 'true' : 'false'}">${deleteSvg}</button>
+            <button class="bookmark-action" type="button" data-bookmark-action="copy" data-bookmark-id="${bookmark.id}" title="复制" draggable="false">${copySvg}</button>
+            <button class="bookmark-action" type="button" data-bookmark-action="edit" data-bookmark-id="${bookmark.id}" title="编辑" draggable="false">${editSvg}</button>
+            <button class="bookmark-action ${isDeleteConfirmOpen ? 'is-danger' : ''}" type="button" data-bookmark-action="delete" data-bookmark-id="${bookmark.id}" title="删除" aria-expanded="${isDeleteConfirmOpen ? 'true' : 'false'}" draggable="false">${deleteSvg}</button>
           </div>
           ${isDeleteConfirmOpen ? `
             <div class="bookmark-delete-confirm" data-delete-confirm="true">
               <p class="bookmark-delete-confirm__text">确认删除这个书签？</p>
               <div class="bookmark-delete-confirm__actions">
-                <button class="bookmark-delete-confirm__btn bookmark-delete-confirm__btn--ghost" type="button" data-bookmark-action="cancel-delete" data-bookmark-id="${bookmark.id}">取消</button>
-                <button class="bookmark-delete-confirm__btn bookmark-delete-confirm__btn--danger" type="button" data-bookmark-action="confirm-delete" data-bookmark-id="${bookmark.id}">删除</button>
+                <button class="bookmark-delete-confirm__btn bookmark-delete-confirm__btn--ghost" type="button" data-bookmark-action="cancel-delete" data-bookmark-id="${bookmark.id}" draggable="false">取消</button>
+                <button class="bookmark-delete-confirm__btn bookmark-delete-confirm__btn--danger" type="button" data-bookmark-action="confirm-delete" data-bookmark-id="${bookmark.id}" draggable="false">删除</button>
               </div>
             </div>
           ` : ''}
@@ -1482,7 +1505,171 @@ function clearFolderDropTargets() {
   });
 }
 
+function resetBookmarkDragState(options = {}) {
+  const { preservePending = false } = options;
+
+  state.dragBookmarkId = null;
+  state.bookmarkDropTargetId = null;
+  state.bookmarkDropPosition = null;
+
+  if (!preservePending) {
+    state.isBookmarkMovePending = false;
+  }
+
+  bodyEl.classList.remove('is-bookmark-dragging');
+}
+
+function updateBookmarkDropPreview(targetBookmarkId, dropPosition) {
+  bookmarkGridEl.querySelectorAll('.bookmark-card.is-drop-target').forEach((card) => {
+    card.classList.remove('is-drop-target', 'drop-before', 'drop-after');
+  });
+
+  state.bookmarkDropTargetId = targetBookmarkId || null;
+  state.bookmarkDropPosition = targetBookmarkId ? dropPosition : null;
+
+  if (!targetBookmarkId || !dropPosition) {
+    return;
+  }
+
+  const targetCard = bookmarkGridEl.querySelector(`[data-bookmark-id="${targetBookmarkId}"]`);
+  if (!targetCard) {
+    return;
+  }
+
+  targetCard.classList.add('is-drop-target', `drop-${dropPosition}`);
+}
+
+function handleBookmarkCardDragStart(event) {
+  if (state.currentView !== 'bookmarks' || state.isBookmarkMovePending) return;
+
+  const card = event.target.closest('.bookmark-card[data-bookmark-id]');
+  if (!card) return;
+
+  state.dragBookmarkId = card.dataset.bookmarkId;
+  bodyEl.classList.add('is-bookmark-dragging');
+  card.classList.add('is-dragging');
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', state.dragBookmarkId);
+  }
+}
+
+function handleBookmarkCardDragOver(event) {
+  if (!state.dragBookmarkId || state.isBookmarkMovePending) return;
+
+  const targetCard = event.target.closest('.bookmark-card[data-bookmark-id]');
+  if (!targetCard) return;
+
+  const targetBookmarkId = targetCard.dataset.bookmarkId;
+  if (targetBookmarkId === state.dragBookmarkId) {
+    updateBookmarkDropPreview(null, null);
+    return;
+  }
+
+  event.preventDefault();
+
+  const dropPosition = getBookmarkDropPosition({
+    clientX: event.clientX,
+    clientY: event.clientY,
+    rect: targetCard.getBoundingClientRect(),
+    columnCount: getBookmarkGridColumnCount()
+  });
+
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+
+  updateBookmarkDropPreview(targetBookmarkId, dropPosition);
+}
+
+async function handleBookmarkCardDrop(event) {
+  if (!state.dragBookmarkId || state.isBookmarkMovePending) return;
+
+  const targetCard = event.target.closest('.bookmark-card[data-bookmark-id]');
+  if (!targetCard) {
+    resetBookmarkDragState();
+    renderBookmarksView();
+    return;
+  }
+
+  event.preventDefault();
+
+  const targetBookmarkId = targetCard.dataset.bookmarkId;
+  const dropPosition = state.bookmarkDropTargetId === targetBookmarkId
+    ? state.bookmarkDropPosition
+    : getBookmarkDropPosition({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      rect: targetCard.getBoundingClientRect(),
+      columnCount: getBookmarkGridColumnCount()
+    });
+
+  await reorderBookmarkWithinCurrentFolder({
+    draggedBookmarkId: state.dragBookmarkId,
+    targetBookmarkId,
+    dropPosition
+  });
+}
+
+function handleBookmarkCardDragEnd() {
+  if (state.isBookmarkMovePending) return;
+
+  resetBookmarkDragState();
+  renderBookmarksView();
+}
+
+async function reorderBookmarkWithinCurrentFolder({
+  draggedBookmarkId,
+  targetBookmarkId,
+  dropPosition
+}) {
+  const folder = state.currentFolderId ? state.foldersById.get(state.currentFolderId) : null;
+  if (!folder) {
+    resetBookmarkDragState();
+    renderBookmarksView();
+    return;
+  }
+
+  const orderedIds = folder.children.map((bookmark) => bookmark.id);
+  const targetIndex = getReorderedBookmarkIndex({
+    orderedIds,
+    draggedId: draggedBookmarkId,
+    targetId: targetBookmarkId,
+    dropPosition
+  });
+
+  if (targetIndex < 0) {
+    resetBookmarkDragState();
+    renderBookmarksView();
+    return;
+  }
+
+  state.isBookmarkMovePending = true;
+
+  try {
+    // 直接改 Chrome 书签真实索引，页面顺序与浏览器顺序保持一致。
+    await moveBookmarkNode(draggedBookmarkId, {
+      parentId: folder.id,
+      index: targetIndex
+    });
+
+    await loadBookmarkTree();
+    await selectFolder(folder.id, false);
+    showToast('已更新书签顺序');
+  } catch (error) {
+    showToast('更新书签顺序失败，请稍后重试');
+  } finally {
+    resetBookmarkDragState();
+    if (state.currentView === 'bookmarks') {
+      renderBookmarksView();
+    }
+  }
+}
+
 function handleBookmarkGridClick(event) {
+  if (state.isBookmarkMovePending) return;
+
   const openTarget = event.target.closest('[data-open-bookmark="true"]');
   if (openTarget) return;
 
@@ -1569,9 +1756,9 @@ function updateBookmarkNode(bookmarkId, changes) {
   });
 }
 
-function moveBookmarkNode(bookmarkId, parentId) {
+function moveBookmarkNode(bookmarkId, destination) {
   return new Promise((resolve, reject) => {
-    chrome.bookmarks.move(bookmarkId, { parentId }, (movedBookmark) => {
+    chrome.bookmarks.move(bookmarkId, destination, (movedBookmark) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
@@ -1651,7 +1838,7 @@ async function handleBookmarkEditSubmit(event) {
     });
 
     if (nextFolderId !== bookmark.parentId) {
-      await moveBookmarkNode(bookmark.id, nextFolderId);
+      await moveBookmarkNode(bookmark.id, { parentId: nextFolderId });
     }
 
     if (nextNote) {
